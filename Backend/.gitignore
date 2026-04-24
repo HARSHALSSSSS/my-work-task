@@ -1,0 +1,32 @@
+# ─── Node modules ─────────────────────────────────────────
+node_modules/
+**/node_modules/
+
+# ─── Environment variables ────────────────────────────────
+.env
+**/.env
+!**/.env.example
+
+# ─── Logs ─────────────────────────────────────────────────
+logs/
+*.log
+**/logs/
+
+# ─── Uploads (keep folder, ignore files) ──────────────────
+uploads/temp/*
+uploads/products/*
+uploads/designs/*
+uploads/documents/*
+!uploads/**/.gitkeep
+
+# ─── Firebase service account (NEVER commit) ──────────────
+**/serviceAccountKey.json
+**/firebase-adminsdk*.json
+**/firebase-key.json
+
+# ─── OS / Editor ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+dist/
+.expo

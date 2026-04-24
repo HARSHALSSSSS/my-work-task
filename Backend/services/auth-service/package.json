@@ -1,0 +1,32 @@
+{
+  "name": "speedcopy-auth-service",
+  "version": "1.0.0",
+  "description": "Authentication service for SpeedCopy",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "firebase:ensure-admin": "node scripts/ensure-firebase-admin-user.js",
+    "firebase:ensure-staff": "node scripts/ensure-firebase-staff-users.js",
+    "firebase:ensure-portals": "node scripts/ensure-firebase-portal-users.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^13.8.0",
+    "google-auth-library": "^10.6.2",
+    "helmet": "^7.1.0",
+    "joi": "^17.13.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.3.4",
+    "morgan": "^1.10.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

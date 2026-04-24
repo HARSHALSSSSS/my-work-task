@@ -1,0 +1,1732 @@
+{
+  "info": {
+    "_postman_id": "speedcopy-complete-collection-v1",
+    "name": "SpeedCopy Complete API",
+    "description": "Complete API collection for SpeedCopy multi-role platform covering Auth, Shopping, Printing, Gifting, Orders, Payments, Vendor, Delivery, Admin and more.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "vendorToken", "value": "", "type": "string" },
+    { "key": "deliveryToken", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "vendorUserId", "value": "", "type": "string" },
+    { "key": "categoryId", "value": "", "type": "string" },
+    { "key": "productId", "value": "", "type": "string" },
+    { "key": "shopId", "value": "", "type": "string" },
+    { "key": "printConfigId", "value": "", "type": "string" },
+    { "key": "businessConfigId", "value": "", "type": "string" },
+    { "key": "designId", "value": "", "type": "string" },
+    { "key": "templateId", "value": "", "type": "string" },
+    { "key": "cartItemId", "value": "", "type": "string" },
+    { "key": "orderId", "value": "", "type": "string" },
+    { "key": "rzpOrderId", "value": "", "type": "string" },
+    { "key": "rzpPaymentId", "value": "", "type": "string" },
+    { "key": "addressId", "value": "", "type": "string" },
+    { "key": "notificationId", "value": "", "type": "string" },
+    { "key": "ticketId", "value": "", "type": "string" },
+    { "key": "taskId", "value": "", "type": "string" },
+    { "key": "storeId", "value": "", "type": "string" },
+    { "key": "staffId", "value": "", "type": "string" },
+    { "key": "couponCode", "value": "SAVE10", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Rahul Sharma\",\n  \"email\": \"rahul@example.com\",\n  \"password\": \"Password@123\",\n  \"role\": \"user\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.token) { pm.collectionVariables.set('token', json.token); }",
+            "  if (json.user && json.user._id) { pm.collectionVariables.set('userId', json.user._id); }",
+            "  else if (json.userId) { pm.collectionVariables.set('userId', json.userId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"rahul@example.com\",\n  \"password\": \"Password@123\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.token) { pm.collectionVariables.set('token', json.token); }",
+            "  if (json.user && json.user._id) { pm.collectionVariables.set('userId', json.user._id); }",
+            "  else if (json.userId) { pm.collectionVariables.set('userId', json.userId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Verify (mock user)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/verify", "host": ["{{baseUrl}}"], "path": ["api","auth","verify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock_user001_user\",\n  \"role\": \"user\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.token) { pm.collectionVariables.set('token', json.token); }",
+            "  if (json.user && json.user._id) { pm.collectionVariables.set('userId', json.user._id); }",
+            "  else if (json.userId) { pm.collectionVariables.set('userId', json.userId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Verify as Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/verify", "host": ["{{baseUrl}}"], "path": ["api","auth","verify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock_admin001_admin\",\n  \"role\": \"user\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.token) { pm.collectionVariables.set('adminToken', json.token); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Verify as Vendor",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/verify", "host": ["{{baseUrl}}"], "path": ["api","auth","verify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock_vendor001_vendor\",\n  \"role\": \"vendor\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.token) { pm.collectionVariables.set('vendorToken', json.token); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Verify as Delivery",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/verify", "host": ["{{baseUrl}}"], "path": ["api","auth","verify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock_rider001_delivery_partner\",\n  \"role\": \"delivery_partner\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.token) { pm.collectionVariables.set('deliveryToken', json.token); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api","auth","me"] }
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/users/{{userId}}/role", "host": ["{{baseUrl}}"], "path": ["api","auth","users","{{userId}}","role"] },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"vendor\"\n}" }
+          }
+        },
+        {
+          "name": "Update User Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/users/{{userId}}/status", "host": ["{{baseUrl}}"], "path": ["api","auth","users","{{userId}}","status"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 User Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users/profile", "host": ["{{baseUrl}}"], "path": ["api","users","profile"] }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/users/profile", "host": ["{{baseUrl}}"], "path": ["api","users","profile"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Rahul Sharma\",\n  \"phone\": \"+91-9876543210\",\n  \"gender\": \"male\"\n}" }
+          }
+        },
+        {
+          "name": "Get Addresses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users/addresses", "host": ["{{baseUrl}}"], "path": ["api","users","addresses"] }
+          }
+        },
+        {
+          "name": "Add Address",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/users/addresses", "host": ["{{baseUrl}}"], "path": ["api","users","addresses"] },
+            "body": { "mode": "raw", "raw": "{\n  \"label\": \"Home\",\n  \"fullName\": \"Rahul\",\n  \"phone\": \"+91-9876543210\",\n  \"line1\": \"123 MG Road\",\n  \"city\": \"New Delhi\",\n  \"state\": \"Delhi\",\n  \"pincode\": \"110001\",\n  \"isDefault\": true\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.address && json.address._id) { pm.collectionVariables.set('addressId', json.address._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('addressId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('addressId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/users/addresses/{{addressId}}", "host": ["{{baseUrl}}"], "path": ["api","users","addresses","{{addressId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"label\": \"Office\",\n  \"line1\": \"456 CP\"\n}" }
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users/addresses/{{addressId}}", "host": ["{{baseUrl}}"], "path": ["api","users","addresses","{{addressId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛍️ Shopping",
+      "item": [
+        {
+          "name": "Shop Home",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/shop/home", "host": ["{{baseUrl}}"], "path": ["api","shop","home"] }
+          }
+        },
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/shop/categories", "host": ["{{baseUrl}}"], "path": ["api","shop","categories"] }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  var cats = json.categories || json.data || json;",
+            "  if (Array.isArray(cats) && cats.length > 0) { pm.collectionVariables.set('categoryId', cats[0]._id || cats[0].id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/shop/products?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","shop","products"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  var prods = json.products || json.data || json;",
+            "  if (Array.isArray(prods) && prods.length > 0) { pm.collectionVariables.set('productId', prods[0]._id || prods[0].id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Product by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/shop/products/a4-notebook", "host": ["{{baseUrl}}"], "path": ["api","shop","products","a4-notebook"] }
+          }
+        },
+        {
+          "name": "Get Deals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/shop/deals", "host": ["{{baseUrl}}"], "path": ["api","shop","deals"] }
+          }
+        },
+        {
+          "name": "Get Trending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/shop/trending", "host": ["{{baseUrl}}"], "path": ["api","shop","trending"] }
+          }
+        },
+        {
+          "name": "Search Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/shop/search?q=notebook",
+              "host": ["{{baseUrl}}"], "path": ["api","shop","search"],
+              "query": [{ "key": "q", "value": "notebook" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎁 Gifting",
+      "item": [
+        {
+          "name": "Gifting Home",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/gifting/home", "host": ["{{baseUrl}}"], "path": ["api","gifting","home"] }
+          }
+        },
+        {
+          "name": "Get Gifting Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/gifting/categories", "host": ["{{baseUrl}}"], "path": ["api","gifting","categories"] }
+          }
+        },
+        {
+          "name": "Get Gifting Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gifting/products?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","gifting","products"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Gifting Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/gifting/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","gifting","products","{{productId}}"] }
+          }
+        },
+        {
+          "name": "Search Gifting Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gifting/search?q=mug",
+              "host": ["{{baseUrl}}"], "path": ["api","gifting","search"],
+              "query": [{ "key": "q", "value": "mug" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🖨️ Document Printing",
+      "item": [
+        {
+          "name": "Get Document Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/printing/document-types", "host": ["{{baseUrl}}"], "path": ["api","printing","document-types"] }
+          }
+        },
+        {
+          "name": "Get Service Packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/printing/service-packages", "host": ["{{baseUrl}}"], "path": ["api","printing","service-packages"] }
+          }
+        },
+        {
+          "name": "Get Pickup Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/printing/pickup-locations?lat=28.6139&lng=77.2090&radius=10",
+              "host": ["{{baseUrl}}"], "path": ["api","printing","pickup-locations"],
+              "query": [{ "key": "lat", "value": "28.6139" }, { "key": "lng", "value": "77.2090" }, { "key": "radius", "value": "10" }]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  var shops = json.shops || json.locations || json.data || json;",
+            "  if (Array.isArray(shops) && shops.length > 0) { pm.collectionVariables.set('shopId', shops[0]._id || shops[0].id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Upload Files",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/printing/upload", "host": ["{{baseUrl}}"], "path": ["api","printing","upload"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "files", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Configure Print (Standard-Delivery)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/printing/configure", "host": ["{{baseUrl}}"], "path": ["api","printing","configure"] },
+            "body": { "mode": "raw", "raw": "{\n  \"printType\": \"standard_printing\",\n  \"files\": [{\n    \"originalName\": \"doc.pdf\",\n    \"url\": \"https://example.com/doc.pdf\",\n    \"size\": 1024000,\n    \"mimeType\": \"application/pdf\"\n  }],\n  \"colorMode\": \"bw\",\n  \"pageSize\": \"a4\",\n  \"printSide\": \"two_sided\",\n  \"printOutputType\": \"stapled\",\n  \"copies\": 2,\n  \"deliveryMethod\": \"delivery\",\n  \"servicePackage\": \"express\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.config && json.config._id) { pm.collectionVariables.set('printConfigId', json.config._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('printConfigId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('printConfigId', json.data._id); }",
+            "  else if (json.printConfigId) { pm.collectionVariables.set('printConfigId', json.printConfigId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Configure Print (Spiral-Pickup)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/printing/configure", "host": ["{{baseUrl}}"], "path": ["api","printing","configure"] },
+            "body": { "mode": "raw", "raw": "{\n  \"printType\": \"spiral_binding\",\n  \"files\": [{\n    \"originalName\": \"report.pdf\",\n    \"url\": \"https://example.com/report.pdf\",\n    \"size\": 2048000,\n    \"mimeType\": \"application/pdf\"\n  }],\n  \"colorMode\": \"color\",\n  \"pageSize\": \"a4\",\n  \"printSide\": \"two_sided\",\n  \"coverPage\": \"transparent_sheet\",\n  \"copies\": 1,\n  \"deliveryMethod\": \"pickup\",\n  \"shopId\": \"{{shopId}}\"\n}" }
+          }
+        },
+        {
+          "name": "Configure Print (Thesis)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/printing/configure", "host": ["{{baseUrl}}"], "path": ["api","printing","configure"] },
+            "body": { "mode": "raw", "raw": "{\n  \"printType\": \"thesis_binding\",\n  \"files\": [{\n    \"originalName\": \"thesis.pdf\",\n    \"url\": \"https://example.com/thesis.pdf\",\n    \"size\": 5120000,\n    \"mimeType\": \"application/pdf\"\n  }],\n  \"colorMode\": \"bw\",\n  \"pageSize\": \"a4\",\n  \"printSide\": \"two_sided\",\n  \"bindingCover\": \"black_gold\",\n  \"cdRequired\": \"need\",\n  \"copies\": 3,\n  \"deliveryMethod\": \"delivery\",\n  \"servicePackage\": \"standard\"\n}" }
+          }
+        },
+        {
+          "name": "Get Print Config",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/printing/config/{{printConfigId}}", "host": ["{{baseUrl}}"], "path": ["api","printing","config","{{printConfigId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Business Printing",
+      "item": [
+        {
+          "name": "Get Business Print Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/business-printing/types", "host": ["{{baseUrl}}"], "path": ["api","business-printing","types"] }
+          }
+        },
+        {
+          "name": "Get Business Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/business-printing/products?type=business_card",
+              "host": ["{{baseUrl}}"], "path": ["api","business-printing","products"],
+              "query": [{ "key": "type", "value": "business_card" }]
+            }
+          }
+        },
+        {
+          "name": "Get Business Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/business-printing/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["api","business-printing","products","{{productId}}"] }
+          }
+        },
+        {
+          "name": "Get Business Service Packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/business-printing/service-packages", "host": ["{{baseUrl}}"], "path": ["api","business-printing","service-packages"] }
+          }
+        },
+        {
+          "name": "Get Business Pickup Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/business-printing/pickup-locations?lat=28.6139&lng=77.2090",
+              "host": ["{{baseUrl}}"], "path": ["api","business-printing","pickup-locations"],
+              "query": [{ "key": "lat", "value": "28.6139" }, { "key": "lng", "value": "77.2090" }]
+            }
+          }
+        },
+        {
+          "name": "Configure Business Print",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/business-printing/configure", "host": ["{{baseUrl}}"], "path": ["api","business-printing","configure"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"productName\": \"Business Card Premium\",\n  \"businessPrintType\": \"business_card\",\n  \"designType\": \"premium\",\n  \"designId\": \"{{designId}}\",\n  \"selectedOptions\": {\n    \"size\": \"Standard (3.5 x 2 in)\",\n    \"paperType\": \"Glossy\",\n    \"finish\": \"UV Coating\",\n    \"sides\": \"Double-sided\"\n  },\n  \"quantity\": 100,\n  \"unitPrice\": 0.8,\n  \"totalPrice\": 80,\n  \"deliveryMethod\": \"delivery\",\n  \"servicePackage\": \"express\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.config && json.config._id) { pm.collectionVariables.set('businessConfigId', json.config._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('businessConfigId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('businessConfigId', json.data._id); }",
+            "  else if (json.businessConfigId) { pm.collectionVariables.set('businessConfigId', json.businessConfigId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Business Config",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/business-printing/config/{{businessConfigId}}", "host": ["{{baseUrl}}"], "path": ["api","business-printing","config","{{businessConfigId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎨 Design",
+      "item": [
+        {
+          "name": "Get Templates",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/designs/templates?flowType=business_printing",
+              "host": ["{{baseUrl}}"], "path": ["api","designs","templates"],
+              "query": [{ "key": "flowType", "value": "business_printing" }]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  var templates = json.templates || json.data || json;",
+            "  if (Array.isArray(templates) && templates.length > 0) { pm.collectionVariables.set('templateId', templates[0]._id || templates[0].id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Premium Templates",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/designs/templates/premium?category=business_card",
+              "host": ["{{baseUrl}}"], "path": ["api","designs","templates","premium"],
+              "query": [{ "key": "category", "value": "business_card" }]
+            }
+          }
+        },
+        {
+          "name": "Create Blank Design",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/designs/blank", "host": ["{{baseUrl}}"], "path": ["api","designs","blank"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"flowType\": \"business_printing\",\n  \"dimensions\": {\n    \"width\": 89,\n    \"height\": 51,\n    \"unit\": \"mm\"\n  }\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.design && json.design._id) { pm.collectionVariables.set('designId', json.design._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('designId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('designId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Create Design from Template",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/designs/from-template", "host": ["{{baseUrl}}"], "path": ["api","designs","from-template"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"templateId\": \"{{templateId}}\",\n  \"flowType\": \"business_printing\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.design && json.design._id) { pm.collectionVariables.set('designId', json.design._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('designId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('designId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Save Design",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/designs", "host": ["{{baseUrl}}"], "path": ["api","designs"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"flowType\": \"business_printing\",\n  \"designType\": \"normal\",\n  \"name\": \"My Business Card\",\n  \"canvasJson\": {\n    \"version\": \"5.3.0\",\n    \"objects\": [],\n    \"background\": \"#ffffff\",\n    \"width\": 350,\n    \"height\": 200\n  },\n  \"isFinalized\": true\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.design && json.design._id) { pm.collectionVariables.set('designId', json.design._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('designId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('designId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get My Designs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/designs?productId={{productId}}",
+              "host": ["{{baseUrl}}"], "path": ["api","designs"],
+              "query": [{ "key": "productId", "value": "{{productId}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Design by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/designs/{{designId}}", "host": ["{{baseUrl}}"], "path": ["api","designs","{{designId}}"] }
+          }
+        },
+        {
+          "name": "Update Design",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/designs/{{designId}}", "host": ["{{baseUrl}}"], "path": ["api","designs","{{designId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"My Business Card v2\",\n  \"isFinalized\": true\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛒 Cart",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart", "host": ["{{baseUrl}}"], "path": ["api","orders","cart"] }
+          }
+        },
+        {
+          "name": "Add to Cart (Printing)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart", "host": ["{{baseUrl}}"], "path": ["api","orders","cart"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"productName\": \"Standard Printing\",\n  \"flowType\": \"printing\",\n  \"printConfigId\": \"{{printConfigId}}\",\n  \"quantity\": 1,\n  \"unitPrice\": 85,\n  \"totalPrice\": 85\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.item && json.item._id) { pm.collectionVariables.set('cartItemId', json.item._id); }",
+            "  else if (json.cartItem && json.cartItem._id) { pm.collectionVariables.set('cartItemId', json.cartItem._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('cartItemId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('cartItemId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Add to Cart (Gifting)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart", "host": ["{{baseUrl}}"], "path": ["api","orders","cart"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"productName\": \"Custom Mug\",\n  \"flowType\": \"gifting\",\n  \"designId\": \"{{designId}}\",\n  \"quantity\": 2,\n  \"unitPrice\": 299,\n  \"totalPrice\": 598\n}" }
+          }
+        },
+        {
+          "name": "Add to Cart (Shopping)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart", "host": ["{{baseUrl}}"], "path": ["api","orders","cart"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"productName\": \"A4 Notebook\",\n  \"flowType\": \"shopping\",\n  \"quantity\": 3,\n  \"unitPrice\": 120,\n  \"totalPrice\": 360\n}" }
+          }
+        },
+        {
+          "name": "Update Cart Item",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart/{{cartItemId}}", "host": ["{{baseUrl}}"], "path": ["api","orders","cart","{{cartItemId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"quantity\": 3\n}" }
+          }
+        },
+        {
+          "name": "Apply Coupon",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart/apply-coupon", "host": ["{{baseUrl}}"], "path": ["api","orders","cart","apply-coupon"] },
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{couponCode}}\",\n  \"subtotal\": 598,\n  \"flowType\": \"gifting\"\n}" }
+          }
+        },
+        {
+          "name": "Remove Cart Item",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart/{{cartItemId}}", "host": ["{{baseUrl}}"], "path": ["api","orders","cart","{{cartItemId}}"] }
+          }
+        },
+        {
+          "name": "Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/cart/clear", "host": ["{{baseUrl}}"], "path": ["api","orders","cart","clear"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Orders",
+      "item": [
+        {
+          "name": "Create Order (Printing-Delivery)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api","orders"] },
+            "body": { "mode": "raw", "raw": "{\n  \"items\": [{\n    \"productId\": \"{{productId}}\",\n    \"productName\": \"Standard Printing\",\n    \"flowType\": \"printing\",\n    \"printConfigId\": \"{{printConfigId}}\",\n    \"quantity\": 1,\n    \"unitPrice\": 85,\n    \"totalPrice\": 85\n  }],\n  \"shippingAddress\": {\n    \"fullName\": \"Rahul Sharma\",\n    \"phone\": \"+91-9876543210\",\n    \"line1\": \"123 MG Road\",\n    \"city\": \"New Delhi\",\n    \"state\": \"Delhi\",\n    \"pincode\": \"110001\"\n  },\n  \"subtotal\": 85,\n  \"discount\": 0,\n  \"deliveryCharge\": 40,\n  \"total\": 125\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.order && json.order._id) { pm.collectionVariables.set('orderId', json.order._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('orderId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('orderId', json.data._id); }",
+            "  else if (json.orderId) { pm.collectionVariables.set('orderId', json.orderId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Create Order (Printing-Pickup)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api","orders"] },
+            "body": { "mode": "raw", "raw": "{\n  \"items\": [{\n    \"productId\": \"{{productId}}\",\n    \"productName\": \"Spiral Binding\",\n    \"flowType\": \"printing\",\n    \"printConfigId\": \"{{printConfigId}}\",\n    \"quantity\": 1,\n    \"unitPrice\": 60,\n    \"totalPrice\": 60\n  }],\n  \"pickupShopId\": \"{{shopId}}\",\n  \"subtotal\": 60,\n  \"discount\": 0,\n  \"deliveryCharge\": 0,\n  \"total\": 60\n}" }
+          }
+        },
+        {
+          "name": "Create Order (Gifting)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api","orders"] },
+            "body": { "mode": "raw", "raw": "{\n  \"items\": [{\n    \"productId\": \"{{productId}}\",\n    \"productName\": \"Custom Mug\",\n    \"flowType\": \"gifting\",\n    \"designId\": \"{{designId}}\",\n    \"quantity\": 1,\n    \"unitPrice\": 299,\n    \"totalPrice\": 299\n  }],\n  \"shippingAddress\": {\n    \"fullName\": \"Rahul Sharma\",\n    \"phone\": \"+91-9876543210\",\n    \"line1\": \"123 MG Road\",\n    \"city\": \"New Delhi\",\n    \"state\": \"Delhi\",\n    \"pincode\": \"110001\"\n  },\n  \"subtotal\": 299,\n  \"discount\": 0,\n  \"deliveryCharge\": 50,\n  \"total\": 349\n}" }
+          }
+        },
+        {
+          "name": "Get My Orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?page=1&limit=10",
+              "host": ["{{baseUrl}}"], "path": ["api","orders"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }]
+            }
+          }
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}"] }
+          }
+        },
+        {
+          "name": "Track Order",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/track", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}","track"] }
+          }
+        },
+        {
+          "name": "Reorder",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/reorder", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}","reorder"] }
+          }
+        },
+        {
+          "name": "Update Order Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/status", "host": ["{{baseUrl}}"], "path": ["api","orders","{{orderId}}","status"] },
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"assigned_vendor\",\n  \"note\": \"Assigned to vendor\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Payments",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/payments/create", "host": ["{{baseUrl}}"], "path": ["api","payments","create"] },
+            "body": { "mode": "raw", "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"amount\": 125,\n  \"currency\": \"INR\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.razorpayOrderId) { pm.collectionVariables.set('rzpOrderId', json.razorpayOrderId); }",
+            "  else if (json.order && json.order.id) { pm.collectionVariables.set('rzpOrderId', json.order.id); }",
+            "  else if (json.id) { pm.collectionVariables.set('rzpOrderId', json.id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Verify Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/payments/verify", "host": ["{{baseUrl}}"], "path": ["api","payments","verify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"razorpayOrderId\": \"{{rzpOrderId}}\",\n  \"razorpayPaymentId\": \"pay_mock_test_001\",\n  \"razorpaySignature\": \"mock_signature\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏪 Vendor — Orders",
+      "item": [
+        {
+          "name": "Get Order Queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendor/orders/queue?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","queue"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","{{orderId}}"] }
+          }
+        },
+        {
+          "name": "Accept Order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/orders/{{orderId}}/accept", "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","{{orderId}}","accept"] }
+          }
+        },
+        {
+          "name": "Reject Order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/orders/{{orderId}}/reject", "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","{{orderId}}","reject"] },
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Out of stock\"\n}" }
+          }
+        },
+        {
+          "name": "Start Production",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/orders/{{orderId}}/start-production", "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","{{orderId}}","start-production"] }
+          }
+        },
+        {
+          "name": "QC Pending",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/orders/{{orderId}}/qc-pending", "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","{{orderId}}","qc-pending"] }
+          }
+        },
+        {
+          "name": "Ready for Pickup",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/orders/{{orderId}}/ready-for-pickup", "host": ["{{baseUrl}}"], "path": ["api","vendor","orders","{{orderId}}","ready-for-pickup"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏬 Vendor — Org & Stores",
+      "item": [
+        {
+          "name": "Get Org Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/org/profile", "host": ["{{baseUrl}}"], "path": ["api","vendor","org","profile"] }
+          }
+        },
+        {
+          "name": "Update Org Profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/org/profile", "host": ["{{baseUrl}}"], "path": ["api","vendor","org","profile"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessName\": \"PrintMaster Solutions\",\n  \"gstNumber\": \"29ABCDE1234F1Z5\",\n  \"contactName\": \"Amit Kumar\",\n  \"contactEmail\": \"amit@printmaster.com\",\n  \"contactPhone\": \"+91-9876543210\"\n}" }
+          }
+        },
+        {
+          "name": "Get Stores",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores"] }
+          }
+        },
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"PrintMaster - CP\",\n  \"address\": {\n    \"line1\": \"Block A, CP\",\n    \"city\": \"New Delhi\",\n    \"state\": \"Delhi\",\n    \"pincode\": \"110001\"\n  },\n  \"location\": {\n    \"lat\": 28.6315,\n    \"lng\": 77.2167\n  },\n  \"phone\": \"+91-9876543210\",\n  \"workingHours\": \"9:00 AM - 9:00 PM\",\n  \"workingDays\": [\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\n  \"supportedFlows\": [\"printing\",\"gifting\"],\n  \"capacity\": {\n    \"maxOrdersPerDay\": 50\n  }\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.store && json.store._id) { pm.collectionVariables.set('storeId', json.store._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('storeId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('storeId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Store by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores/{{storeId}}", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores","{{storeId}}"] }
+          }
+        },
+        {
+          "name": "Update Store",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores/{{storeId}}", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores","{{storeId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"workingHours\": \"8:00 AM - 10:00 PM\"\n}" }
+          }
+        },
+        {
+          "name": "Update Store Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores/{{storeId}}/status", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores","{{storeId}}","status"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" }
+          }
+        },
+        {
+          "name": "Update Store Capacity",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores/{{storeId}}/capacity", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores","{{storeId}}","capacity"] },
+            "body": { "mode": "raw", "raw": "{\n  \"maxOrdersPerDay\": 80,\n  \"currentLoad\": 12\n}" }
+          }
+        },
+        {
+          "name": "Update Store Availability",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/stores/{{storeId}}/availability", "host": ["{{baseUrl}}"], "path": ["api","vendor","stores","{{storeId}}","availability"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isAvailable\": false\n}" }
+          }
+        },
+        {
+          "name": "Get Nearby Stores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendor/stores/nearby?lat=28.6139&lng=77.2090&radius=10",
+              "host": ["{{baseUrl}}"], "path": ["api","vendor","stores","nearby"],
+              "query": [{ "key": "lat", "value": "28.6139" }, { "key": "lng", "value": "77.2090" }, { "key": "radius", "value": "10" }]
+            }
+          }
+        },
+        {
+          "name": "Get Staff",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/staff", "host": ["{{baseUrl}}"], "path": ["api","vendor","staff"] }
+          }
+        },
+        {
+          "name": "Add Staff",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/staff", "host": ["{{baseUrl}}"], "path": ["api","vendor","staff"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Suresh Operator\",\n  \"email\": \"suresh@printmaster.com\",\n  \"phone\": \"+91-9876543211\",\n  \"role\": \"operator\",\n  \"storeId\": \"{{storeId}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.staff && json.staff._id) { pm.collectionVariables.set('staffId', json.staff._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('staffId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('staffId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Update Staff",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/staff/{{staffId}}", "host": ["{{baseUrl}}"], "path": ["api","vendor","staff","{{staffId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"manager\"\n}" }
+          }
+        },
+        {
+          "name": "Update Staff Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/staff/{{staffId}}/status", "host": ["{{baseUrl}}"], "path": ["api","vendor","staff","{{staffId}}","status"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" }
+          }
+        },
+        {
+          "name": "Get Analytics Performance",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/analytics/performance", "host": ["{{baseUrl}}"], "path": ["api","vendor","analytics","performance"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚴 Delivery Partner",
+      "item": [
+        {
+          "name": "Get Available Tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/tasks/available?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","available"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Accept Task",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/accept", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","accept"] },
+            "body": { "mode": "raw", "raw": "{\n  \"taskId\": \"{{taskId}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.task && json.task._id) { pm.collectionVariables.set('taskId', json.task._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('taskId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('taskId', json.data._id); }",
+            "  else if (json.taskId) { pm.collectionVariables.set('taskId', json.taskId); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get Current Task",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/current", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","current"] }
+          }
+        },
+        {
+          "name": "Get My Tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/delivery/tasks/mine?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","mine"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","{{taskId}}"] }
+          }
+        },
+        {
+          "name": "Arrived at Pickup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/{{taskId}}/arrived-pickup", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","{{taskId}}","arrived-pickup"] }
+          }
+        },
+        {
+          "name": "Confirm Pickup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/{{taskId}}/confirm-pickup", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","{{taskId}}","confirm-pickup"] },
+            "body": { "mode": "raw", "raw": "{\n  \"checkedItemIds\": []\n}" }
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/{{taskId}}/location", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","{{taskId}}","location"] },
+            "body": { "mode": "raw", "raw": "{\n  \"lat\": 28.6315,\n  \"lng\": 77.2167,\n  \"heading\": 90,\n  \"speedKmph\": 25,\n  \"etaMinutes\": 8,\n  \"distanceKm\": 2.4\n}" }
+          }
+        },
+        {
+          "name": "Mark Delivered",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/{{taskId}}/mark-delivered", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","{{taskId}}","mark-delivered"] }
+          }
+        },
+        {
+          "name": "SOS Alert",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{deliveryToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/delivery/tasks/{{taskId}}/sos", "host": ["{{baseUrl}}"], "path": ["api","delivery","tasks","{{taskId}}","sos"] },
+            "body": { "mode": "raw", "raw": "{\n  \"message\": \"Vehicle breakdown near MG Road\"\n}" }
+          }
+        },
+        {
+          "name": "Track Order (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/delivery/track/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","delivery","track","{{orderId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","notifications"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  var notifs = json.notifications || json.data || json;",
+            "  if (Array.isArray(notifs) && notifs.length > 0) { pm.collectionVariables.set('notificationId', notifs[0]._id || notifs[0].id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read", "host": ["{{baseUrl}}"], "path": ["api","notifications","{{notificationId}}","read"] }
+          }
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api","notifications","read-all"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎫 Support Tickets",
+      "item": [
+        {
+          "name": "Create Ticket",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/tickets", "host": ["{{baseUrl}}"], "path": ["api","tickets"] },
+            "body": { "mode": "raw", "raw": "{\n  \"subject\": \"Order not delivered\",\n  \"description\": \"My order was supposed to arrive yesterday.\",\n  \"category\": \"delivery_issue\",\n  \"priority\": \"high\",\n  \"orderId\": \"{{orderId}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "try {",
+            "  var json = pm.response.json();",
+            "  if (json.ticket && json.ticket._id) { pm.collectionVariables.set('ticketId', json.ticket._id); }",
+            "  else if (json._id) { pm.collectionVariables.set('ticketId', json._id); }",
+            "  else if (json.data && json.data._id) { pm.collectionVariables.set('ticketId', json.data._id); }",
+            "} catch(e) { console.log('Test script error:', e); }"
+          ]}}]
+        },
+        {
+          "name": "Get My Tickets",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets?status=open&page=1&limit=10",
+              "host": ["{{baseUrl}}"], "path": ["api","tickets"],
+              "query": [{ "key": "status", "value": "open" }, { "key": "page", "value": "1" }, { "key": "limit", "value": "10" }]
+            }
+          }
+        },
+        {
+          "name": "Get Ticket by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tickets/{{ticketId}}", "host": ["{{baseUrl}}"], "path": ["api","tickets","{{ticketId}}"] }
+          }
+        },
+        {
+          "name": "Reply to Ticket (Customer)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/tickets/{{ticketId}}/reply", "host": ["{{baseUrl}}"], "path": ["api","tickets","{{ticketId}}","reply"] },
+            "body": { "mode": "raw", "raw": "{\n  \"message\": \"Still no update, please check.\"\n}" }
+          }
+        },
+        {
+          "name": "Reply to Ticket (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/tickets/{{ticketId}}/reply", "host": ["{{baseUrl}}"], "path": ["api","tickets","{{ticketId}}","reply"] },
+            "body": { "mode": "raw", "raw": "{\n  \"message\": \"We have escalated this to the delivery team.\"\n}" }
+          }
+        },
+        {
+          "name": "Get All Tickets (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets?status=open&page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","tickets"],
+              "query": [{ "key": "status", "value": "open" }, { "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Wallet & Referrals",
+      "item": [
+        {
+          "name": "Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/wallet", "host": ["{{baseUrl}}"], "path": ["api","wallet"] }
+          }
+        },
+        {
+          "name": "Get Wallet Ledger",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/wallet/ledger?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","wallet","ledger"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Referrals",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/referrals", "host": ["{{baseUrl}}"], "path": ["api","referrals"] }
+          }
+        },
+        {
+          "name": "Apply Referral Code",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/referrals/apply", "host": ["{{baseUrl}}"], "path": ["api","referrals","apply"] },
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"SCABC1XY2Z\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💸 Vendor Finance",
+      "item": [
+        {
+          "name": "Get Finance Summary",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vendor/finance/summary", "host": ["{{baseUrl}}"], "path": ["api","vendor","finance","summary"] }
+          }
+        },
+        {
+          "name": "Get Payout History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{vendorToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendor/finance/payout-history?page=1&limit=10",
+              "host": ["{{baseUrl}}"], "path": ["api","vendor","finance","payout-history"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin — Dashboard & Orders",
+      "item": [
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/dashboard", "host": ["{{baseUrl}}"], "path": ["api","admin","dashboard"] }
+          }
+        },
+        {
+          "name": "Get All Orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/orders?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","orders"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Orders by Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/orders?status=pending&page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","orders"],
+              "query": [{ "key": "status", "value": "pending" }, { "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Admin Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","admin","orders","{{orderId}}"] }
+          }
+        },
+        {
+          "name": "Reassign Vendor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/orders/{{orderId}}/reassign-vendor", "host": ["{{baseUrl}}"], "path": ["api","admin","orders","{{orderId}}","reassign-vendor"] },
+            "body": { "mode": "raw", "raw": "{\n  \"vendorId\": \"{{vendorUserId}}\",\n  \"storeId\": \"{{storeId}}\"\n}" }
+          }
+        },
+        {
+          "name": "Cancel Order (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/orders/{{orderId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api","admin","orders","{{orderId}}","cancel"] },
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Customer requested cancellation\"\n}" }
+          }
+        },
+        {
+          "name": "Process Refund",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/orders/{{orderId}}/refund", "host": ["{{baseUrl}}"], "path": ["api","admin","orders","{{orderId}}","refund"] },
+            "body": { "mode": "raw", "raw": "{\n  \"refundId\": \"rfnd_mock_001\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin — Vendors & Customers",
+      "item": [
+        {
+          "name": "Get All Vendors",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/vendors?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","vendors"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/vendors/{{vendorUserId}}", "host": ["{{baseUrl}}"], "path": ["api","admin","vendors","{{vendorUserId}}"] }
+          }
+        },
+        {
+          "name": "Suspend Vendor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/vendors/{{vendorUserId}}/suspend", "host": ["{{baseUrl}}"], "path": ["api","admin","vendors","{{vendorUserId}}","suspend"] },
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Multiple quality complaints\"\n}" }
+          }
+        },
+        {
+          "name": "Update Vendor Priority",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/vendors/{{vendorUserId}}/priority", "host": ["{{baseUrl}}"], "path": ["api","admin","vendors","{{vendorUserId}}","priority"] },
+            "body": { "mode": "raw", "raw": "{\n  \"priority\": 10\n}" }
+          }
+        },
+        {
+          "name": "Get All Customers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","customers"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Search Customers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers?search=rahul&page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","customers"],
+              "query": [{ "key": "search", "value": "rahul" }, { "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/customers/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api","admin","customers","{{userId}}"] }
+          }
+        },
+        {
+          "name": "Restrict Customer",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/customers/{{userId}}/restrict", "host": ["{{baseUrl}}"], "path": ["api","admin","customers","{{userId}}","restrict"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false,\n  \"reason\": \"Fraudulent activity\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Admin — Staff & Control",
+      "item": [
+        {
+          "name": "Get All Staff",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/staff?page=1&limit=20",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","staff"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }]
+            }
+          }
+        },
+        {
+          "name": "Create Staff",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/staff", "host": ["{{baseUrl}}"], "path": ["api","admin","staff"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Priya Support\",\n  \"email\": \"priya@speedcopy.com\",\n  \"role\": \"staff\"\n}" }
+          }
+        },
+        {
+          "name": "Update Staff Role",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/staff/{{userId}}/role", "host": ["{{baseUrl}}"], "path": ["api","admin","staff","{{userId}}","role"] },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"admin\"\n}" }
+          }
+        },
+        {
+          "name": "Get Control Settings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/control", "host": ["{{baseUrl}}"], "path": ["api","admin","control"] }
+          }
+        },
+        {
+          "name": "Toggle Order Intake",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/control/order-intake", "host": ["{{baseUrl}}"], "path": ["api","admin","control","order-intake"] },
+            "body": { "mode": "raw", "raw": "{\n  \"enabled\": true\n}" }
+          }
+        },
+        {
+          "name": "City Pause",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/control/city-pause", "host": ["{{baseUrl}}"], "path": ["api","admin","control","city-pause"] },
+            "body": { "mode": "raw", "raw": "{\n  \"city\": \"Mumbai\",\n  \"paused\": true\n}" }
+          }
+        },
+        {
+          "name": "Update Feature Flags",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/control/feature-flags", "host": ["{{baseUrl}}"], "path": ["api","admin","control","feature-flags"] },
+            "body": { "mode": "raw", "raw": "{\n  \"gifting\": true,\n  \"shopping\": true,\n  \"printing\": true,\n  \"referrals\": true,\n  \"wallet\": true\n}" }
+          }
+        },
+        {
+          "name": "Get Reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports?from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"], "path": ["api","admin","reports"],
+              "query": [{ "key": "from", "value": "2026-01-01" }, { "key": "to", "value": "2026-12-31" }]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/audit-logs", "host": ["{{baseUrl}}"], "path": ["api","admin","audit-logs"] }
+          }
+        },
+        {
+          "name": "Get Finance Summary (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/finance/summary", "host": ["{{baseUrl}}"], "path": ["api","admin","finance","summary"] }
+          }
+        },
+        {
+          "name": "Issue Refund (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/refunds/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api","admin","refunds","{{orderId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 125,\n  \"customerId\": \"{{userId}}\",\n  \"reason\": \"Order cancelled - full refund\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 Health Checks",
+      "item": [
+        {
+          "name": "Gateway Health (4000)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4000/health", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Auth Service Health (4001)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4001/health", "protocol": "http", "host": ["localhost"], "port": "4001", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Order Service Health (4002)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4002/health", "protocol": "http", "host": ["localhost"], "port": "4002", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Vendor Service Health (4003)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4003/health", "protocol": "http", "host": ["localhost"], "port": "4003", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Delivery Service Health (4004)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4004/health", "protocol": "http", "host": ["localhost"], "port": "4004", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Notification Service Health (4005)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4005/health", "protocol": "http", "host": ["localhost"], "port": "4005", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Payment Service Health (4006)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4006/health", "protocol": "http", "host": ["localhost"], "port": "4006", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Admin Service Health (4007)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4007/health", "protocol": "http", "host": ["localhost"], "port": "4007", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Printing Service Health (4008)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4008/health", "protocol": "http", "host": ["localhost"], "port": "4008", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Design Service Health (4009)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4009/health", "protocol": "http", "host": ["localhost"], "port": "4009", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Shop Service Health (4010)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4010/health", "protocol": "http", "host": ["localhost"], "port": "4010", "path": ["health"] }
+          }
+        },
+        {
+          "name": "Gifting Service Health (4011)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4011/health", "protocol": "http", "host": ["localhost"], "port": "4011", "path": ["health"] }
+          }
+        }
+      ]
+    }
+  ]
+}
