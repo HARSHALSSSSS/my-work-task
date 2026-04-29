@@ -22,7 +22,7 @@ import * as productsApi from '../../api/products';
 import { dedupeProducts, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { Radii, Spacing, Typography, scale } from '../../constants/theme';
+import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'PrintStore'>;
 
