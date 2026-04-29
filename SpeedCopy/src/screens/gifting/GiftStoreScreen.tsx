@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -28,8 +28,8 @@ type Nav = NativeStackNavigationProp<GiftStackParamList, 'GiftStore'>;
 
 const IMG_DELIVERY_FAST = require('../../../assets/images/gift-delivery-fast.png');
 const IMG_DELIVERY_MIDNIGHT = require('../../../assets/images/gift-delivery-midnight.png');
-const IMG_GIFT_BANNER_PRIMARY = require('../../../assets/images/gift-banner-bloom.png');
-const IMG_GIFT_BANNER_SECONDARY = require('../../../assets/images/gift-banner-holi.png');
+const IMG_GIFT_BANNER_PRIMARY = require('../../../assets/images/gift-best-roses.png');
+const IMG_GIFT_BANNER_SECONDARY = require('../../../assets/images/gift-best-tulips.png');
 const IMG_PROD_MUG = require('../../../assets/images/gift-prod-mug.png');
 
 type CatItem = { id: string; label: string; color: string; image?: ImageSourcePropType };
