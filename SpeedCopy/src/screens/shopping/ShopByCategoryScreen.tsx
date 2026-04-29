@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -26,7 +26,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 
 type Nav = NativeStackNavigationProp<HomeTabStackParamList, 'ShopByCategory'>;
 
-const IMG_BANNER = require('../../../assets/images/print-banner.png');
+const IMG_BANNER = require('../../../assets/images/print-business-cards.png');
 const IMG_CAT_BUSINESS = require('../../../assets/images/print-cat-business.png');
 const IMG_CAT_FLYERS = require('../../../assets/images/print-cat-flyers.png');
 const IMG_FRAME = require('../../../assets/images/shop-frame.png');
