@@ -1,0 +1,32 @@
+{
+    "name": "speedcopy-backend",
+    "version": "1.0.0",
+    "description": "SpeedCopy multi-category platform backend monorepo",
+    "private": true,
+    "type": "commonjs",
+    "scripts": {
+        "start": "node scripts/start-all.js",
+        "dev": "node scripts/start-all.js --dev",
+        "health": "node scripts/health-check.js",
+        "seed": "node scripts/seed-db.js",
+        "seed:auth": "node scripts/seed-auth.js",
+        "seed:portals": "node services/auth-service/scripts/ensure-firebase-portal-users.js",
+        "install:all": "node scripts/install-all.js",
+        "format": "prettier --write \"services/**/*.js\" \"shared/**/*.js\" \"scripts/**/*.js\" \"*.js\" \"*.json\"",
+        "format:check": "prettier --check \"services/**/*.js\" \"shared/**/*.js\" \"scripts/**/*.js\" \"*.js\" \"*.json\""
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.3",
+        "dotenv": "^17.4.2",
+        "firebase-admin": "^13.8.0",
+        "joi": "^17.13.1",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^8.23.0",
+        "winston": "^3.19.0"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1",
+        "nodemon": "^3.1.14",
+        "prettier": "^3.3.2"
+    }
+}

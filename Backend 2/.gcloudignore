@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+node_modules
+logs
+uploads
+docs
+services/.expo
+services/*/node_modules
+services/*/logs
+services/*/uploads
+gateway/node_modules
+gateway/logs
+gateway/uploads
+*.md
+*.bat

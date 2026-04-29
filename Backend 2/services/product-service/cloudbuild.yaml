@@ -1,0 +1,11 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'services/product-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/project-ac781843-c65b-42b0-9f4/microservices-repo/product',
+      '.'
+    ]
+
+images:
+  - 'asia-south1-docker.pkg.dev/project-ac781843-c65b-42b0-9f4/microservices-repo/product'
