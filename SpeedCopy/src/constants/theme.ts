@@ -46,68 +46,84 @@ export const Gradients = {
 
 export const Typography = {
   h1: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  h2: {
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: 'Poppins_700Bold',
     fontSize: 24,
     lineHeight: 30,
   },
-  h3: {
+  h2: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
-  },
-  h4: {
-    fontFamily: 'Poppins_500Medium',
     fontSize: 20,
     lineHeight: 26,
   },
-  body: {
+  h3: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  h4: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 22,
   },
-  bodyBold: {
+  title: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 23,
   },
-  caption: {
+  subtitle: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 14,
     lineHeight: 20,
   },
-  small: {
+  body: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  bodyBold: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  bodySm: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  caption: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 17,
+  },
+  small: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11,
+    lineHeight: 15,
   },
   tiny: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 10,
-    lineHeight: 14,
+    lineHeight: 13,
   },
 } as const;
 
 export const Spacing = {
+  xxs: 2,
   xs: 4,
   sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
-  xxxl: 32,
+  md: 10,
+  lg: 14,
+  xl: 18,
+  xxl: 22,
+  xxxl: 28,
 } as const;
 
 export const Radii = {
-  card: 20,
-  button: 12,
-  input: 12,
-  chip: 18,
-  section: 15,
+  card: 16,
+  button: 10,
+  input: 10,
+  chip: 16,
+  section: 13,
   small: 8,
 } as const;
 
@@ -115,9 +131,9 @@ export const Shadows = {
   card: Platform.select({
     ios: {
       shadowColor: Colors.black,
-      shadowOffset: { width: 0, height: 8 },
+      shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.08,
-      shadowRadius: 16,
+      shadowRadius: 12,
     },
     android: {
       elevation: 4,
@@ -126,9 +142,9 @@ export const Shadows = {
   small: Platform.select({
     ios: {
       shadowColor: Colors.black,
-      shadowOffset: { width: 0, height: 4 },
+      shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.06,
-      shadowRadius: 8,
+      shadowRadius: 7,
     },
     android: {
       elevation: 2,

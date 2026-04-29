@@ -1,5 +1,15 @@
-﻿﻿import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet, Alert, Image, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  StyleSheet,
+  Alert,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,14 +17,26 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import {
-  User, ShoppingBag, Wallet, MapPin, Gift, Bell, HelpCircle,
-  Trash2, LogOut, ChevronLeft, ChevronRight, Camera, Pencil,
+  User,
+  ShoppingBag,
+  Wallet,
+  MapPin,
+  Gift,
+  Bell,
+  HelpCircle,
+  Trash2,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Camera,
+  Pencil,
 } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ProfileStackParamList, AppTabParamList } from '../../navigation/types';
 import * as userApi from '../../api/user';
+import { Radii, Spacing, Typography } from '../../constants/theme';
 
 type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<ProfileStackParamList, 'Profile'>,
@@ -39,7 +61,8 @@ export const ProfileScreen: React.FC = () => {
   useEffect(() => {
     setProfileLoading(true);
     setProfileError(null);
-    userApi.getProfile()
+    userApi
+      .getProfile()
       .then((p) => {
         if (p?.name) setUserName(p.name);
         if (p?.phone) setPhone(p.phone);
@@ -120,8 +143,8 @@ export const ProfileScreen: React.FC = () => {
     { icon: Trash2, iconBg: 'rgba(235, 87, 87, 0.1)', label: 'Delete my account', onPress: handleDeleteAccount },
   ];
 
-  const renderMenuGroup = (items: MenuItem[], groupHeight: number) => (
-    <View style={[styles.menuGroup, { height: groupHeight, backgroundColor: t.card, borderColor: t.border }]}>
+  const renderMenuGroup = (items: MenuItem[]) => (
+    <View style={[styles.menuGroup, { backgroundColor: t.card, borderColor: t.border }]}> 
       {items.map((item, idx) => {
         const Icon = item.icon;
         const isLast = idx === items.length - 1;
@@ -130,15 +153,19 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
                 <View style={[styles.menuIconWrap, { backgroundColor: item.iconBg }]}>
-                  <Icon size={22} color={t.iconDefault} />
+                  <Icon size={18} color={t.iconDefault} />
                 </View>
                 <Text style={[styles.menuLabel, { color: t.textPrimary }]}>{item.label}</Text>
               </View>
-              <TouchableOpacity onPress={item.onPress} style={styles.menuChevron} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
-                <ChevronRight size={20} color={t.chevron} />
+              <TouchableOpacity
+                onPress={item.onPress}
+                style={styles.menuChevron}
+                hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+              >
+                <ChevronRight size={18} color={t.chevron} />
               </TouchableOpacity>
             </View>
-            {!isLast && <View style={[styles.menuSeparator, { backgroundColor: t.divider }]} />}
+            {!isLast ? <View style={[styles.menuSeparator, { backgroundColor: t.divider }]} /> : null}
           </React.Fragment>
         );
       })}
@@ -147,31 +174,32 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <SafeScreen>
-      <View style={[styles.headerBar, { backgroundColor: t.background }]}>
+      <View style={[styles.headerBar, { backgroundColor: t.background }]}> 
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <ChevronLeft size={24} color={t.textPrimary} />
+          <ChevronLeft size={22} color={t.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Profile</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 22 }} />
       </View>
 
-      {profileLoading && (
+      {profileLoading ? (
         <View style={styles.loadingBanner}>
           <ActivityIndicator color={t.textSecondary} />
           <Text style={[styles.loadingText, { color: t.textSecondary }]}>Loading your profile…</Text>
         </View>
-      )}
-      {!profileLoading && profileError && (
-        <View style={[styles.errorBanner, { backgroundColor: t.chipBg }]}>
+      ) : null}
+
+      {!profileLoading && profileError ? (
+        <View style={[styles.errorBanner, { backgroundColor: t.chipBg }]}> 
           <Text style={[styles.errorText, { color: t.textPrimary }]}>{profileError}</Text>
         </View>
-      )}
+      ) : null}
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.avatarCard, { backgroundColor: t.card }]}>
+        <View style={[styles.avatarCard, { backgroundColor: t.card, borderColor: t.border }]}> 
           <TouchableOpacity onPress={pickImage} activeOpacity={0.8} style={styles.avatarTouchable}>
             <LinearGradient
-              colors={['#D9D9D9', '#6B6B6B', '#000000']}
+              colors={['#D9D9D9', '#8A8A8A', '#2E2E2E']}
               start={{ x: 0.3, y: 0 }}
               end={{ x: 0.8, y: 1 }}
               style={styles.avatarCircle}
@@ -179,41 +207,41 @@ export const ProfileScreen: React.FC = () => {
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatarImage} />
               ) : (
-                <View style={[styles.avatarInner, { backgroundColor: t.divider }]}>
-                  <User size={50} color={t.placeholder} strokeWidth={1.2} />
+                <View style={[styles.avatarInner, { backgroundColor: t.divider }]}> 
+                  <User size={34} color={t.placeholder} strokeWidth={1.4} />
                 </View>
               )}
             </LinearGradient>
-            <View style={[styles.cameraBadge, { backgroundColor: t.card }]}>
-              <Camera size={14} color={t.textPrimary} />
+            <View style={[styles.cameraBadge, { backgroundColor: t.card, borderColor: t.border }]}> 
+              <Camera size={12} color={t.textPrimary} />
             </View>
           </TouchableOpacity>
+
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: t.textPrimary }]}>{userName || 'Add your name'}</Text>
-            <Text style={[styles.userPhone, { color: t.textSecondary }]}>{phone || 'Add phone number'}</Text>
-            <Text style={[styles.userEmail, { color: t.textSecondary }]}>{userEmail || 'Add email address'}</Text>
+            <Text style={[styles.userMeta, { color: t.textSecondary }]}>{phone || 'Add phone number'}</Text>
+            <Text style={[styles.userMeta, { color: t.textSecondary }]}>{userEmail || 'Add email address'}</Text>
           </View>
         </View>
 
-        <View style={styles.darkModeRow}>
+        <View style={[styles.darkModeRow, { backgroundColor: t.card, borderColor: t.border }]}> 
           <Text style={[styles.darkModeLabel, { color: t.textPrimary }]}>Enable Dark Mode</Text>
           <Switch
             value={themeMode === 'dark'}
             onValueChange={toggleTheme}
             trackColor={{ false: t.border, true: '#4CA1AF' }}
             thumbColor={t.card}
-            style={{ transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }] }}
           />
         </View>
 
         <View style={styles.menuContainer}>
-          {renderMenuGroup(group1, 340)}
-          {renderMenuGroup(group2, 200)}
-          {renderMenuGroup(group3, 166)}
+          {renderMenuGroup(group1)}
+          {renderMenuGroup(group2)}
+          {renderMenuGroup(group3)}
         </View>
 
-        <TouchableOpacity style={[styles.logoutBtn, { borderColor: t.textPrimary }]} onPress={handleLogout} activeOpacity={0.8}>
-          <LogOut size={20} color={t.textPrimary} />
+        <TouchableOpacity style={[styles.logoutBtn, { borderColor: t.textPrimary }]} onPress={handleLogout} activeOpacity={0.85}>
+          <LogOut size={18} color={t.textPrimary} />
           <Text style={[styles.logoutText, { color: t.textPrimary }]}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -226,21 +254,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 10,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 36,
-    color: '#242424',
+    ...Typography.title,
     textAlign: 'center',
   },
   scrollContent: {
-    paddingTop: 8,
-    paddingHorizontal: 16,
+    paddingTop: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
+    gap: Spacing.sm,
   },
   loadingBanner: {
     flexDirection: 'row',
@@ -249,159 +275,137 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
   },
-  loadingText: { fontFamily: 'Poppins_400Regular', fontSize: 12 },
+  loadingText: {
+    ...Typography.small,
+  },
   errorBanner: {
-    marginHorizontal: 16,
-    marginBottom: 8,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.xs,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: Radii.small,
   },
-  errorText: { fontFamily: 'Poppins_500Medium', fontSize: 12 },
+  errorText: {
+    ...Typography.small,
+  },
   avatarCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
+    borderRadius: Radii.section,
+    borderWidth: 1,
     alignItems: 'center',
-    paddingVertical: 10,
-    gap: 18,
+    paddingVertical: Spacing.md,
+    gap: Spacing.md,
   },
   avatarTouchable: {
     position: 'relative',
   },
   avatarCircle: {
-    width: 129,
-    height: 129,
-    borderRadius: 82,
+    width: 102,
+    height: 102,
+    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
-    width: 87,
-    height: 87,
-    borderRadius: 44,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   avatarInner: {
-    width: 87,
-    height: 87,
-    borderRadius: 44,
-    backgroundColor: '#E8E8E8',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cameraBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    bottom: 3,
+    right: 3,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    borderWidth: 1,
   },
   userInfo: {
     alignItems: 'center',
+    gap: 1,
   },
   userName: {
+    ...Typography.h4,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 23,
-    color: '#000000',
     textAlign: 'center',
   },
-  userPhone: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 16,
-    lineHeight: 23,
-    color: '#6B6B6B',
-    textAlign: 'center',
-  },
-  userEmail: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 16,
-    lineHeight: 23,
-    color: '#6B6B6B',
+  userMeta: {
+    ...Typography.caption,
     textAlign: 'center',
   },
   darkModeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 23,
-    marginBottom: 18,
+    borderRadius: Radii.section,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   darkModeLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 20,
-    lineHeight: 22,
-    color: '#000000',
+    ...Typography.subtitle,
   },
   menuContainer: {
-    gap: 10,
+    gap: Spacing.sm,
   },
   menuGroup: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: '#6B6B6B',
-    padding: 10,
-    justifyContent: 'space-between',
+    borderRadius: Radii.section,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flex: 1,
+    minHeight: 50,
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 22,
+    gap: Spacing.md,
+    flex: 1,
   },
   menuIconWrap: {
-    width: 48,
-    height: 48,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 20,
-    lineHeight: 26,
-    color: '#000000',
+    ...Typography.subtitle,
+    flexShrink: 1,
   },
   menuChevron: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuSeparator: {
-    height: 0.5,
-    backgroundColor: '#8F8F8F',
-    marginLeft: 58,
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 46,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    padding: 10,
+    gap: 10,
+    minHeight: 44,
     borderWidth: 1,
-    borderColor: '#000000',
-    borderRadius: 10,
-    marginTop: 30,
+    borderRadius: Radii.button,
+    marginTop: Spacing.md,
   },
   logoutText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 23,
-    color: '#000000',
-    textAlign: 'center',
+    ...Typography.bodyBold,
   },
 });

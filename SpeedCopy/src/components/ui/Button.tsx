@@ -7,7 +7,7 @@ import {
   TextStyle,
   ActivityIndicator,
 } from 'react-native';
-import { Colors, Typography, Radii, Shadows } from '../../constants/theme';
+import { Typography, Radii, Spacing } from '../../constants/theme';
 import { useThemeStore } from '../../store/useThemeStore';
 import { hapticLight } from '../../utils/haptics';
 
@@ -37,8 +37,8 @@ export const Button: React.FC<ButtonProps> = ({
   const { colors: t } = useThemeStore();
 
   const variantBg: Record<string, ViewStyle> = {
-    primary: { backgroundColor: t.textPrimary },
-    secondary: { backgroundColor: t.surface },
+    primary: { backgroundColor: t.textPrimary, borderColor: t.textPrimary, borderWidth: 1 },
+    secondary: { backgroundColor: t.card, borderColor: t.border, borderWidth: 1 },
     outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: t.textPrimary },
     ghost: { backgroundColor: 'transparent' },
   };
@@ -70,9 +70,12 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <TouchableOpacity
       style={containerStyles}
-      onPress={() => { hapticLight(); onPress(); }}
+      onPress={() => {
+        hapticLight();
+        onPress();
+      }}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? t.background : t.textPrimary} />
@@ -88,15 +91,16 @@ const styles = StyleSheet.create({
     borderRadius: Radii.button,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
   },
   fullWidth: { alignSelf: 'stretch' },
-  smSize: { paddingVertical: 8, paddingHorizontal: 16 },
-  mdSize: { paddingVertical: 14, paddingHorizontal: 20 },
-  lgSize: { paddingVertical: 18, paddingHorizontal: 24 },
+  smSize: { minHeight: 38, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.lg },
+  mdSize: { minHeight: 44, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.xl },
+  lgSize: { minHeight: 48, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
   disabled: { opacity: 0.5 },
   baseText: { ...Typography.bodyBold, textAlign: 'center' },
-  smText: { fontSize: 14 },
-  mdText: { fontSize: 16 },
-  lgText: { fontSize: 18 },
-  disabledText: { opacity: 0.7 },
+  smText: { fontSize: 12, lineHeight: 16 },
+  mdText: { fontSize: 14, lineHeight: 19 },
+  lgText: { fontSize: 15, lineHeight: 21 },
+  disabledText: { opacity: 0.8 },
 });

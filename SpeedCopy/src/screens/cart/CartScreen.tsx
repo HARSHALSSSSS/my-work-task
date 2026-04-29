@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,7 +39,6 @@ type CartNav = CompositeNavigationProp<
 >;
 
 const TEAL_PRIMARY = '#0F766E';
-const ORANGE_LINK = '#EA580C';
 const TAG_GREEN_BG = '#E8F8EE';
 const TAG_GREEN_TEXT = '#00A63E';
 const TAG_GRAY_BG = '#ECECEC';
@@ -289,9 +288,6 @@ export function CartScreen() {
     };
   }, [dominantCartFlow, items.length, cartProductSignature, cartProductIds]);
 
-  const goHome = useCallback(() => {
-    navigation.navigate('HomeTab', { screen: 'CategoryHub' });
-  }, [navigation]);
 
   const onSuggestionPress = useCallback(
     (product: SuggestedProduct) => {
@@ -416,7 +412,12 @@ export function CartScreen() {
         if (item.type === 'printing') {
           navigation.navigate('HomeTab', {
             screen: 'StandardPrinting',
-            params: { subService: 'standard' },
+            params: {
+              subService: item.printConfig?.serviceType || 'standard',
+              deliveryMode: item.printConfig?.deliveryMethod,
+              locationId: item.printConfig?.shopId,
+              servicePackage: item.printConfig?.servicePackage,
+            },
           });
           return;
         }
@@ -780,18 +781,9 @@ export function CartScreen() {
           disabled={!agreedToTerms || hasUnavailableItems}
           activeOpacity={0.9}
         >
+          <Lock size={17} color={t.background} />
           <Text style={[styles.btnTealText, { color: t.background }]}>Proceed to checkout</Text>
-          <ChevronRight size={20} color={t.background} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.btnBlack, { backgroundColor: t.textPrimary }, (!agreedToTerms || hasUnavailableItems) && styles.btnDisabled]}
-          onPress={goCheckout}
-          disabled={!agreedToTerms || hasUnavailableItems}
-          activeOpacity={0.9}
-        >
-          <Lock size={18} color={t.background} />
-          <Text style={[styles.btnBlackText, { color: t.background }]}>Pay Securely</Text>
+          <ChevronRight size={18} color={t.background} />
         </TouchableOpacity>
       </ScrollView>
     </SafeScreen>
@@ -815,8 +807,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 22,
     color: Colors.textDark,
     flex: 1,
     textAlign: 'center',
@@ -915,8 +907,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   thumbWrap: {
-    width: 88,
-    height: 88,
+    width: 76,
+    height: 76,
     borderRadius: Radii.small,
     overflow: 'hidden',
   },
@@ -936,20 +928,20 @@ const styles = StyleSheet.create({
   },
   productTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: Colors.textDark,
   },
   productDesc: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textSecondary,
   },
   qtyLine: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textMuted,
     marginTop: 2,
   },
@@ -972,8 +964,8 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 19,
     color: Colors.textDark,
     marginTop: Spacing.sm,
   },
@@ -1103,7 +1095,7 @@ const styles = StyleSheet.create({
   },
   bloomTitle: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 20,
+    fontSize: 16,
     color: '#FFFFFF',
     fontStyle: 'italic',
   },
@@ -1183,8 +1175,8 @@ const styles = StyleSheet.create({
   },
   priceHeading: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 20,
     color: Colors.textDark,
     marginBottom: Spacing.xs,
   },
@@ -1216,14 +1208,14 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 20,
     color: Colors.textDark,
   },
   totalValue: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 22,
     color: Colors.textPrimary,
   },
   agreementRow: {
@@ -1265,27 +1257,14 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     backgroundColor: TEAL_PRIMARY,
     borderRadius: Radii.button,
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.md,
     marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
+    minHeight: 44,
   },
   btnTealText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  btnBlack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.black,
-    borderRadius: Radii.button,
-    paddingVertical: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  btnBlackText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
   },
   btnDisabled: {

@@ -21,6 +21,7 @@ import * as designsApi from '../../api/designs';
 import * as productsApi from '../../api/products';
 import { toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
+import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'BusinessPremiumDesigns'>;
 
@@ -38,6 +39,8 @@ type PremiumItem = {
   source: 'template';
 };
 
+const FALLBACK_BANNER = require('../../../assets/images/print-cat-business.png');
+
 export const BusinessPremiumDesignsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<any>();
@@ -46,6 +49,8 @@ export const BusinessPremiumDesignsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<PremiumItem[]>([]);
   const [selectedChip, setSelectedChip] = useState('All');
+  const [templateFilter, setTemplateFilter] = useState<'all' | 'discounted'>('all');
+
   const productId = route.params?.productId as string;
   const productName = route.params?.name as string | undefined;
   const productImage = route.params?.image as string | undefined;
@@ -54,118 +59,147 @@ export const BusinessPremiumDesignsScreen: React.FC = () => {
   const originalPrice = route.params?.originalPrice as number | undefined;
   const discount = route.params?.discount as string | undefined;
 
-  useFocusEffect(useCallback(() => {
-    if (!productId) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
+  useFocusEffect(
+    useCallback(() => {
+      if (!productId) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
 
-    setLoading(true);
-    Promise.all([
-      designsApi.getPremiumTemplates({ productId }).catch(() => []),
-      productsApi.getBusinessPrintProduct(productId).catch(() => null),
-    ])
-      .then(([templates, product]) => {
-        const productThumb = toAbsoluteAssetUrl(
-          product?.thumbnail || product?.images?.[0] || productImage,
-        );
-        const fallbackName = product?.name || productName || 'Premium Design';
-        const fallbackCategory =
-          (typeof product?.category === 'object' ? product?.category?.name : product?.category) ||
-          category ||
-          'Business';
-        const resolvedPricing = product ? resolveProductPricing(product) : { price, originalPrice };
-        const mapped = (templates || []).map((tpl: any) => ({
-          id: tpl._id || tpl.id,
-          name: tpl.name || fallbackName,
-          category: tpl.category || fallbackCategory,
-          previewImage: toAbsoluteAssetUrl(tpl.previewImage || tpl.thumbnail || tpl.image || productThumb),
-          productId: tpl.productId || productId,
-          productName: product?.name || productName,
-          productImage: productThumb,
-          price: resolvedPricing.price,
-          originalPrice: resolvedPricing.originalPrice,
-          discount,
-          source: 'template' as const,
-        }))
-          .filter((x) => Boolean(x.id));
-        setItems(mapped);
-      })
-      .finally(() => setLoading(false));
-  }, [category, discount, originalPrice, price, productId, productImage, productName]));
+      setLoading(true);
+      Promise.all([
+        designsApi.getPremiumTemplates({ productId }).catch(() => []),
+        productsApi.getBusinessPrintProduct(productId).catch(() => null),
+      ])
+        .then(([templates, product]) => {
+          const productThumb = toAbsoluteAssetUrl(product?.thumbnail || product?.images?.[0] || productImage);
+          const fallbackName = product?.name || productName || 'Premium Design';
+          const fallbackCategory =
+            (typeof product?.category === 'object' ? product?.category?.name : product?.category) ||
+            category ||
+            'Business';
+          const resolvedPricing = product ? resolveProductPricing(product) : { price, originalPrice };
+
+          const mapped = (templates || [])
+            .map((tpl: any) => ({
+              id: tpl._id || tpl.id,
+              name: tpl.name || fallbackName,
+              category: tpl.category || fallbackCategory,
+              previewImage: toAbsoluteAssetUrl(tpl.previewImage || tpl.thumbnail || tpl.image || productThumb),
+              productId: tpl.productId || productId,
+              productName: product?.name || productName,
+              productImage: productThumb,
+              price: resolvedPricing.price,
+              originalPrice: resolvedPricing.originalPrice,
+              discount,
+              source: 'template' as const,
+            }))
+            .filter((x) => Boolean(x.id));
+          setItems(mapped);
+        })
+        .finally(() => setLoading(false));
+    }, [category, discount, originalPrice, price, productId, productImage, productName]),
+  );
 
   const chips = useMemo(() => {
     const unique = Array.from(new Set(items.map((x) => x.category).filter(Boolean)));
     return ['All', ...unique];
   }, [items]);
 
-  const filtered = items.filter((item) => {
-    if (selectedChip !== 'All' && item.category !== selectedChip) return false;
-    if (!query.trim()) return true;
-    return item.name.toLowerCase().includes(query.toLowerCase());
-  });
+  const filtered = useMemo(() => {
+    let list = items;
+    if (selectedChip !== 'All') {
+      list = list.filter((item) => item.category === selectedChip);
+    }
+    if (templateFilter === 'discounted') {
+      list = list.filter((item) => Boolean(item.discount));
+    }
+    const keyword = query.trim().toLowerCase();
+    if (keyword) {
+      list = list.filter((item) => item.name.toLowerCase().includes(keyword));
+    }
+    return list;
+  }, [items, query, selectedChip, templateFilter]);
+
+  const bannerUri = toAbsoluteAssetUrl(productImage) || Image.resolveAssetSource(FALLBACK_BANNER).uri;
 
   return (
     <SafeScreen>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <ChevronLeft size={24} color={t.textPrimary} />
+          <ChevronLeft size={22} color={t.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Shop by category</Text>
+        <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Premium Designs</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={[styles.searchRow, { backgroundColor: t.inputBg, borderColor: t.searchBorder }]}>
-        <Search size={18} color={t.placeholder} />
-        <TextInput
-          style={[styles.searchInput, { color: t.textPrimary }]}
-          placeholder="Search"
-          placeholderTextColor={t.placeholder}
-          value={query}
-          onChangeText={setQuery}
-        />
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipsContainer}
-        contentContainerStyle={styles.chipsRow}
-      >
-        {chips.map((chip) => {
-          const active = chip === selectedChip;
-          return (
-            <TouchableOpacity
-              key={chip}
-              style={[styles.chip, { backgroundColor: t.chipBg }, active && [styles.chipActive, { backgroundColor: t.textPrimary }]]}
-              onPress={() => setSelectedChip(chip)}
-            >
-              <Text style={[styles.chipText, { color: t.textMuted }, active && { color: t.background }]}>{chip}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={t.textPrimary} />
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.bannerWrap}>
+          <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
+          <View style={styles.bannerOverlay}>
+            <Text style={styles.bannerTitle}>{productName || 'Business Product'}</Text>
+            <Text style={styles.bannerSub}>Select a premium template to continue</Text>
+          </View>
         </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <FileText size={42} color={t.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No premium design yet</Text>
-          <Text style={[styles.emptyCopy, { color: t.textSecondary }]}>
-            Premium design templates are not available for this product right now.
-          </Text>
+
+        <View style={[styles.searchRow, { backgroundColor: t.inputBg, borderColor: t.searchBorder }]}> 
+          <Search size={18} color={t.placeholder} />
+          <TextInput
+            style={[styles.searchInput, { color: t.textPrimary }]}
+            placeholder="Search templates"
+            placeholderTextColor={t.placeholder}
+            value={query}
+            onChangeText={setQuery}
+          />
         </View>
-      ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.grid}>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer} contentContainerStyle={styles.chipsRow}>
+          {chips.map((chip) => {
+            const active = chip === selectedChip;
+            return (
+              <TouchableOpacity
+                key={chip}
+                style={[styles.chip, { backgroundColor: active ? t.textPrimary : t.chipBg }]}
+                onPress={() => setSelectedChip(chip)}
+              >
+                <Text style={[styles.chipText, { color: active ? t.background : t.textMuted }]}>{chip}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterChip, { borderColor: t.border, backgroundColor: templateFilter === 'all' ? t.textPrimary : t.card }]}
+            onPress={() => setTemplateFilter('all')}
+          >
+            <Text style={[styles.filterChipText, { color: templateFilter === 'all' ? t.background : t.textSecondary }]}>All templates</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterChip, { borderColor: t.border, backgroundColor: templateFilter === 'discounted' ? t.textPrimary : t.card }]}
+            onPress={() => setTemplateFilter('discounted')}
+          >
+            <Text style={[styles.filterChipText, { color: templateFilter === 'discounted' ? t.background : t.textSecondary }]}>Discounted</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={t.textPrimary} />
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.emptyState}>
+            <FileText size={42} color={t.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No premium design yet</Text>
+            <Text style={[styles.emptyCopy, { color: t.textSecondary }]}>Premium design templates are not available for this product right now.</Text>
+          </View>
+        ) : (
           <View style={styles.gridWrap}>
             {filtered.map((item) => (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.card, { backgroundColor: t.chipBg, borderColor: t.divider }]}
+                style={[styles.card, { backgroundColor: t.card, borderColor: t.divider }]}
                 activeOpacity={0.85}
                 onPress={async () => {
                   try {
@@ -183,27 +217,29 @@ export const BusinessPremiumDesignsScreen: React.FC = () => {
                       designId: design._id,
                     });
                   } catch (e: any) {
-                    Alert.alert(
-                      'Error',
-                      e?.serverMessage || e?.message || 'Failed to load template design',
-                    );
+                    Alert.alert('Error', e?.serverMessage || e?.message || 'Failed to load template design');
                   } finally {
                     setLoading(false);
                   }
                 }}
               >
-                <View style={[styles.imageWrap, { backgroundColor: t.chipBg }]}>
-                  {item.previewImage ? (
-                    <Image source={{ uri: item.previewImage }} style={styles.image} resizeMode="cover" />
-                  ) : (
-                    <FileText size={44} color={t.iconDefault} />
-                  )}
+                <View style={[styles.imageWrap, { backgroundColor: t.chipBg }]}> 
+                  {item.previewImage ? <Image source={{ uri: item.previewImage }} style={styles.image} resizeMode="cover" /> : <FileText size={44} color={t.iconDefault} />}
+                </View>
+                <View style={styles.cardBody}>
+                  <Text style={[styles.templateName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
+                  <Text style={[styles.templateMeta, { color: t.textSecondary }]} numberOfLines={1}>{item.category}</Text>
+                  <View style={styles.priceRow}>
+                    {item.price ? <Text style={[styles.priceValue, { color: t.textPrimary }]}>₹{item.price}</Text> : null}
+                    {item.originalPrice ? <Text style={[styles.priceStrike, { color: t.placeholder }]}>₹{item.originalPrice}</Text> : null}
+                    {item.discount ? <Text style={styles.discount}>{item.discount}</Text> : null}
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
-        </ScrollView>
-      )}
+        )}
+      </ScrollView>
     </SafeScreen>
   );
 };
@@ -213,87 +249,106 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
+    ...Typography.title,
     textAlign: 'center',
+  },
+  scroll: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 100,
+  },
+  bannerWrap: {
+    borderRadius: Radii.section,
+    overflow: 'hidden',
+    marginBottom: Spacing.sm,
+  },
+  bannerImage: {
+    width: '100%',
+    height: scale(148),
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'flex-end',
+    padding: Spacing.md,
+  },
+  bannerTitle: {
+    ...Typography.h3,
+    color: '#FFFFFF',
+  },
+  bannerSub: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.9)',
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    marginHorizontal: 16,
-    marginBottom: 12,
+    borderRadius: Radii.input,
+    paddingHorizontal: Spacing.md,
+    minHeight: 42,
+    gap: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    marginBottom: Spacing.sm,
   },
   searchInput: {
+    ...Typography.body,
     flex: 1,
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
-    padding: 0,
+    paddingVertical: 0,
   },
   chipsContainer: {
-    height: 52,
     flexGrow: 0,
   },
   chipsRow: {
-    paddingHorizontal: 16,
-    gap: 10,
+    gap: 8,
     alignItems: 'center',
-    height: 52,
+    paddingRight: 8,
+    marginBottom: Spacing.sm,
   },
   chip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 24,
   },
-  chipActive: {
-    backgroundColor: '#000000',
-  },
   chipText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    lineHeight: 18,
+    ...Typography.caption,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: Spacing.md,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  filterChipText: {
+    ...Typography.small,
   },
   loadingWrap: {
-    flex: 1,
+    paddingVertical: 34,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 30,
   },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
-    paddingTop: 40,
-    gap: 10,
+    paddingTop: 34,
+    gap: 9,
   },
   emptyTitle: {
+    ...Typography.subtitle,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
     textAlign: 'center',
   },
   emptyCopy: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 20,
+    ...Typography.caption,
     textAlign: 'center',
-  },
-  grid: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
   },
   gridWrap: {
     flexDirection: 'row',
@@ -303,7 +358,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    borderRadius: 16,
+    borderRadius: Radii.section,
     overflow: 'hidden',
     borderWidth: 1,
     ...Platform.select({
@@ -313,7 +368,7 @@ const styles = StyleSheet.create({
   },
   imageWrap: {
     width: '100%',
-    height: 170,
+    height: 154,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -321,5 +376,36 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  cardBody: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    gap: 2,
+  },
+  templateName: {
+    ...Typography.caption,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  templateMeta: {
+    ...Typography.small,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  priceValue: {
+    ...Typography.bodyBold,
+    fontSize: 13,
+  },
+  priceStrike: {
+    ...Typography.small,
+    textDecorationLine: 'line-through',
+  },
+  discount: {
+    ...Typography.small,
+    color: Colors.green,
+    fontFamily: 'Poppins_600SemiBold',
   },
 });
