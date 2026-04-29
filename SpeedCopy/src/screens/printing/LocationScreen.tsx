@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Platform,
+  StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,6 +17,7 @@ type Route = RouteProp<PrintStackParamList, 'Location'>;
 
 type LocationItem = {
   id: string;
+  title: string;
   address: string;
 };
 
@@ -25,15 +26,13 @@ export const LocationScreen: React.FC = () => {
   const route = useRoute<Route>();
   const { subService, deliveryMode, servicePackage } = route.params;
   const { colors: t } = useThemeStore();
-  const { addresses, fetchAddresses } = useOrderStore();
+  const { fetchAddresses } = useOrderStore();
   const [query, setQuery] = useState('');
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const trimmedQuery = query.trim();
   const isPincodeQuery = /^\d{6}$/.test(trimmedQuery);
-  const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
-  const pincodeFromAddress = defaultAddress?.pincode?.trim() || '';
-  const activePincode = isPincodeQuery ? trimmedQuery : pincodeFromAddress;
+  const activePincode = isPincodeQuery ? trimmedQuery : '';
 
   useEffect(() => {
     fetchAddresses().catch(() => {});
@@ -50,13 +49,26 @@ export const LocationScreen: React.FC = () => {
     productsApi.getPickupLocations({ pincode: activePincode })
       .then((data) => {
         const mapped = (data || [])
-          .map((loc: any) => ({
-            id: loc._id || loc.id,
-            address: `${loc.name || ''}, ${loc.address || ''}, ${loc.city || ''}, ${loc.state || ''} ${loc.pincode || ''}`
-              .replace(/\s+/g, ' ')
-              .replace(/\s+,/g, ',')
-              .trim(),
-          }))
+          .map((loc: any) => {
+            const title = String(loc.name || loc.shopName || loc.storeName || 'Pickup location').trim();
+            const addressParts = [
+              loc.address,
+              loc.addressLine,
+              loc.area,
+              loc.locality,
+              loc.landmark,
+              loc.city,
+              loc.state,
+            ]
+              .map((part) => String(part || '').trim())
+              .filter(Boolean);
+            const pincode = String(loc.pincode || activePincode || '').trim();
+            return {
+              id: loc._id || loc.id,
+              title,
+              address: [addressParts.join(', '), pincode].filter(Boolean).join(' - '),
+            };
+          })
           .filter((loc: LocationItem) => Boolean(loc.id && loc.address));
         setLocations(mapped);
       })
@@ -64,11 +76,7 @@ export const LocationScreen: React.FC = () => {
       .finally(() => setLoading(false));
   }, [activePincode]);
 
-  const filtered = trimmedQuery && !isPincodeQuery
-    ? locations.filter((l) =>
-        l.address.toLowerCase().includes(query.toLowerCase()),
-    )
-    : locations;
+  const filtered = locations;
 
   const emptyMessage = (() => {
     if (trimmedQuery && !isPincodeQuery) {
@@ -77,7 +85,7 @@ export const LocationScreen: React.FC = () => {
     if (isPincodeQuery) {
       return 'No pickup available for this pincode';
     }
-    return 'Add/select an address with pincode or type a 6-digit pincode to fetch pickup locations.';
+    return 'Enter a 6-digit pincode to fetch pickup locations.';
   })();
 
   const onLocationSelect = (locationId: string) => {
@@ -104,10 +112,12 @@ export const LocationScreen: React.FC = () => {
         <Search size={18} color={t.placeholder} />
         <TextInput
           style={[styles.searchInput, { color: t.textPrimary }]}
-          placeholder="Search"
+          placeholder="Enter 6-digit pincode"
           placeholderTextColor={t.placeholder}
           value={query}
           onChangeText={setQuery}
+          keyboardType="number-pad"
+          maxLength={6}
           returnKeyType="search"
         />
       </View>
@@ -119,6 +129,11 @@ export const LocationScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
+        {loading && isPincodeQuery && (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="small" color={t.textPrimary} />
+          </View>
+        )}
         {filtered.map((location) => (
           <TouchableOpacity
             key={location.id}
@@ -126,7 +141,8 @@ export const LocationScreen: React.FC = () => {
             activeOpacity={0.7}
             onPress={() => onLocationSelect(location.id)}
           >
-            <Text style={[styles.locationText, { color: t.textPrimary }]}>{location.address}</Text>
+            <Text style={[styles.locationTitle, { color: t.textPrimary }]}>{location.title}</Text>
+            <Text style={[styles.locationText, { color: t.textSecondary }]}>{location.address}</Text>
           </TouchableOpacity>
         ))}
         {!loading && filtered.length === 0 && (
@@ -178,6 +194,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 100,
   },
+  loadingWrap: {
+    paddingTop: 24,
+    alignItems: 'center',
+  },
   locationItem: {
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -185,11 +205,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E8E8E8',
     backgroundColor: '#FFFFFF',
   },
+  locationTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
   locationText: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#242424',
+    fontSize: 13,
+    lineHeight: 20,
   },
   emptyWrap: {
     paddingHorizontal: 16,

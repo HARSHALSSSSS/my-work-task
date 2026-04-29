@@ -120,7 +120,7 @@ export const WalletLedgerScreen: React.FC = () => {
             </View>
             <Text style={styles.walletTitle}>Speedcopy Wallet</Text>
           </View>
-          <Text style={styles.walletAmount}>â‚¹{walletBalance}</Text>
+          <Text style={styles.walletAmount}>₹{walletBalance}</Text>
           <Text style={styles.walletSub}>Available Balance</Text>
 
           <View style={styles.walletDivider} />
@@ -198,7 +198,7 @@ export const WalletLedgerScreen: React.FC = () => {
                       </Text>
                     </View>
                     <Text style={[styles.txnAmount, { color: isCredit ? '#00B85A' : '#EB5757' }]}>
-                      {isCredit ? '+' : '-'}â‚¹{entry.amount}
+                      {isCredit ? '+' : '-'}₹{entry.amount}
                     </Text>
                   </View>
                 );
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 30 / 2,
+    fontSize: 16,
     lineHeight: 22,
   },
   scroll: {
@@ -250,18 +250,18 @@ const styles = StyleSheet.create({
   },
   walletTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 32 / 2,
+    fontSize: 17,
     color: '#0B172A',
   },
   walletAmount: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 42 / 2,
+    fontSize: 22,
     color: '#0B172A',
     marginTop: 2,
   },
   walletSub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     color: '#1E4A6A',
     marginTop: 2,
   },
@@ -279,12 +279,12 @@ const styles = StyleSheet.create({
   },
   accountLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
+    fontSize: 12,
     color: '#3A5A78',
   },
   accountName: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
+    fontSize: 17,
     color: '#0B172A',
     marginTop: 1,
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   addFundsText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFFFFF',
   },
   filterRow: {
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
   },
   filterIconBtn: {
     marginLeft: 'auto',
@@ -335,14 +335,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
   },
   groupWrap: {
     marginTop: 10,
   },
   groupTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 30 / 2,
+    fontSize: 16,
     marginBottom: 8,
   },
   txnCard: {
@@ -371,16 +371,16 @@ const styles = StyleSheet.create({
   },
   txnTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
   },
   txnDate: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 2,
   },
   txnAmount: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
+    fontSize: 17,
   },
 });
 

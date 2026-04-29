@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     textAlign: 'center',
   },
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   changePhotoText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
   },
   formCard: {
     borderRadius: 16,
@@ -235,13 +235,13 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
     marginBottom: 6,
     marginTop: 14,
   },
   input: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 15,
+    fontSize: 16,
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
   },
 });
 

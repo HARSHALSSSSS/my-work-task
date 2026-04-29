@@ -751,6 +751,7 @@ export function PaymentMethodScreen() {
           </>
         ) : null}
 
+      </ScrollView>
 
       <RazorpayCheckout
         visible={!!rzpOptions}

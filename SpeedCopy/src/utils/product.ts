@@ -79,14 +79,37 @@ function pickFirstImageCandidate(input: any): string {
   return '';
 }
 
-export function getProductImageUrl(product: any): string {
-  if (!product) return '';
+export function getProductImageCandidates(product: any): string[] {
+  if (!product) return [];
+  const resolved: string[] = [];
+  const pushCandidate = (candidate: any) => {
+    const picked = pickFirstImageCandidate(candidate);
+    if (!picked) return;
+    const absolute = toAbsoluteAssetUrl(picked);
+    if (!absolute || resolved.includes(absolute)) return;
+    resolved.push(absolute);
+  };
   const candidates = [
+    product?.thumbnail?.url,
+    product?.thumbnail?.uri,
+    product?.thumbnail?.src,
+    product?.thumbnail?.path,
     product?.product?.thumbnail,
     product?.product?.image,
     product?.product?.images,
+    product?.product?.media,
+    product?.product?.gallery,
+    product?.item?.thumbnail,
+    product?.item?.image,
+    product?.item?.images,
+    product?.orderItem?.thumbnail,
+    product?.orderItem?.image,
+    product?.orderItem?.images,
     product?.thumbnailUrl,
+    product?.thumbnail_url,
     product?.thumb,
+    product?.thumbUrl,
+    product?.thumb_url,
     product.thumbnail,
     product.image,
     product.imageUrl,
@@ -98,17 +121,27 @@ export function getProductImageUrl(product: any): string {
     product.main_image,
     product.poster,
     product.banner,
+    product.preview,
+    product.previewImage,
+    product.preview_image,
+    product.fileUrl,
+    product.file_url,
+    product.asset,
     product.images,
     product.media,
     product.gallery,
     product.files,
+    product.attachments,
     product.product,
   ];
   for (const candidate of candidates) {
-    const picked = pickFirstImageCandidate(candidate);
-    if (picked) return toAbsoluteAssetUrl(picked);
+    pushCandidate(candidate);
   }
-  return '';
+  return resolved;
+}
+
+export function getProductImageUrl(product: any): string {
+  return getProductImageCandidates(product)[0] || '';
 }
 
 export function inferFlowTypeFromItemId(id?: string): 'printing' | 'gifting' | 'shopping' {

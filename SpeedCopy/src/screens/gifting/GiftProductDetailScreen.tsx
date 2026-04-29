@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   ActivityIndicator,
@@ -224,6 +225,15 @@ export function GiftProductDetailScreen() {
     navigateToCart();
   }, [handleAddToCart, navigateToCart]);
 
+  const handleQuantityChange = useCallback((value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    if (!cleaned) {
+      setQuantity(1);
+      return;
+    }
+    setQuantity(Math.max(1, Math.min(999, Number(cleaned))));
+  }, []);
+
   return (
     <SafeScreen>
       {/* Header */}
@@ -313,7 +323,14 @@ export function GiftProductDetailScreen() {
             >
               <Minus size={16} color={t.iconDefault} />
             </TouchableOpacity>
-            <Text style={[styles.qtyValue, { color: t.textPrimary, borderColor: t.border }]}>{String(quantity).padStart(2, '0')}</Text>
+            <TextInput
+              style={[styles.qtyValue, { color: t.textPrimary, borderColor: t.border }]}
+              value={String(quantity)}
+              onChangeText={handleQuantityChange}
+              keyboardType="number-pad"
+              maxLength={3}
+              selectTextOnFocus
+            />
             <TouchableOpacity
               style={styles.qtyBtn}
               onPress={() => setQuantity((q) => q + 1)}
@@ -584,7 +601,8 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: '#E0E0E0',
-    lineHeight: 38,
+    height: 38,
+    paddingVertical: 0,
   },
   customizeBtn: {
     flex: 1,

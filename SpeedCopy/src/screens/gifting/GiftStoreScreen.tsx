@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Search, ChevronLeft, LayoutGrid } from 'lucide-react-native';
+import { Search, ChevronLeft, Grid2x2, Clock3 } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { Spacing, scale } from '../../constants/theme';
 import { GiftStackParamList } from '../../navigation/types';
@@ -32,7 +32,14 @@ const IMG_GIFT_BANNER_PRIMARY = require('../../../assets/images/gift-best-roses.
 const IMG_GIFT_BANNER_SECONDARY = require('../../../assets/images/gift-best-tulips.png');
 const IMG_PROD_MUG = require('../../../assets/images/gift-prod-mug.png');
 
-type CatItem = { id: string; label: string; color: string; image?: ImageSourcePropType };
+type CatItem = {
+  id: string;
+  label: string;
+  color: string;
+  image?: ImageSourcePropType;
+  categoryParam?: string;
+  productTarget?: ProductItem;
+};
 
 type ProductItem = {
   id: string; name: string; price: number;
@@ -46,6 +53,8 @@ const DELIVERY_CARDS: DeliveryCard[] = [
   { id: 'd2', label: 'Midnight Delivery', image: IMG_DELIVERY_MIDNIGHT },
 ];
 
+const CATEGORY_LIMIT = 8;
+
 function shadow(elevation = 3) {
   return Platform.select({
     ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.1, shadowRadius: 12 },
@@ -56,7 +65,7 @@ function shadow(elevation = 3) {
 
 export function GiftStoreScreen() {
   const navigation = useNavigation<Nav>();
-  const { colors: t } = useThemeStore();
+  const { colors: t, mode } = useThemeStore();
   const [apiCategories, setApiCategories] = useState<CatItem[]>([]);
   const [apiBestSellers, setApiBestSellers] = useState<ProductItem[]>([]);
   const [apiNewArrivals, setApiNewArrivals] = useState<ProductItem[]>([]);
@@ -68,6 +77,7 @@ export function GiftStoreScreen() {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [openingCategoryId, setOpeningCategoryId] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -80,6 +90,32 @@ export function GiftStoreScreen() {
       .then(([home, categories, productsRes]) => {
         const palette = ['#FFF0F5', '#FFF5EE', '#F0FFF0', '#FFFAF0', '#F0F9FF', '#F5F3FF'];
         const categorySeen = new Set<string>();
+        const categoryTargetMap = new Map<string, ProductItem>();
+        const listItemsRaw: any[] = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
+        const listItems = sortProducts(dedupeProducts(listItemsRaw));
+
+        const mapProduct = (p: any): ProductItem => {
+          const thumb = getProductImageUrl(p);
+          const { price, originalPrice, discountLabel } = resolveProductPricing(p);
+          return {
+            id: p._id || p.id,
+            name: p.name || 'Product',
+            price,
+            originalPrice,
+            discount: discountLabel,
+            image: thumb ? { uri: thumb } : IMG_PROD_MUG,
+          };
+        };
+
+        for (const rawItem of listItems) {
+          const key =
+            String(rawItem?.category?.slug || rawItem?.category?._id || rawItem?.category || '').trim().toLowerCase() ||
+            String(rawItem?.subcategory?.slug || rawItem?.subcategory?._id || rawItem?.subcategory || '').trim().toLowerCase();
+          if (!key || categoryTargetMap.has(key)) continue;
+          const mapped = mapProduct(rawItem);
+          if (mapped.id) categoryTargetMap.set(key, mapped);
+        }
+
         const mappedCategories = (categories || [])
           .filter((c: any) => c?.isActive !== false)
           .map((c: any, idx: number) => ({
@@ -87,6 +123,8 @@ export function GiftStoreScreen() {
             label: c.name || 'Category',
             color: palette[idx % palette.length],
             image: c.image ? ({ uri: toAbsoluteAssetUrl(c.image) } as ImageSourcePropType) : undefined,
+            categoryParam: c.slug || c._id || c.name,
+            productTarget: categoryTargetMap.get(String(c.slug || c._id || c.name || '').trim().toLowerCase()),
           }))
           .filter((c: CatItem) => {
             const key = String(c.id || '');
@@ -99,21 +137,6 @@ export function GiftStoreScreen() {
         const bannerPool = home?.banners || [];
         const bannerImages = bannerPool.map((b: any) => toAbsoluteAssetUrl(b.image)).filter(Boolean);
         setBannerUris(bannerImages);
-        const mapProduct = (p: any): ProductItem => {
-          const thumb = p.thumbnail || p.images?.[0];
-          const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-          return {
-            id: p._id || p.id,
-            name: p.name || 'Product',
-            price,
-            originalPrice,
-            discount: discountLabel,
-            image: thumb ? { uri: toAbsoluteAssetUrl(thumb) } : IMG_PROD_MUG,
-          };
-        };
-
-        const listItemsRaw: any[] = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
-        const listItems = sortProducts(dedupeProducts(listItemsRaw));
         const featured = sortProducts(dedupeProducts(home?.featured_products?.length ? home.featured_products : listItems));
         const customizable = sortProducts(dedupeProducts(home?.customizable_products?.length ? home.customizable_products : listItems));
         const premium = sortProducts(dedupeProducts(home?.premium_designs || []));
@@ -150,7 +173,7 @@ export function GiftStoreScreen() {
     displayNewArrivals.length > 0 ||
     displayRecent.length > 0 ||
     displayAllProducts.length > 0;
-  const displayCategories = apiCategories.slice(0, 10);
+  const displayCategories = apiCategories.slice(0, CATEGORY_LIMIT);
   const searchPool = React.useMemo(
     () => dedupeProducts([...displayAllProducts, ...displayBestSellers, ...displayNewArrivals, ...displayRecent]).filter((p) => Boolean(p.id)),
     [displayAllProducts, displayBestSellers, displayNewArrivals, displayRecent],
@@ -188,6 +211,37 @@ export function GiftStoreScreen() {
     },
     [navigation],
   );
+
+  const onCategoryPress = useCallback(async (cat: CatItem) => {
+    if (cat.productTarget?.id) {
+      onProductPress(cat.productTarget);
+      return;
+    }
+
+    if (!cat.categoryParam) return;
+
+    setOpeningCategoryId(cat.id);
+    try {
+      const response = await productsApi.getGiftingProducts({ category: cat.categoryParam, limit: 1 });
+      const rawItems = response?.products || response?.data || (Array.isArray(response) ? response : []);
+      const firstProduct = sortProducts(dedupeProducts(rawItems))[0];
+      if (!firstProduct) return;
+      const firstProductId = String(firstProduct._id || firstProduct.id || '').trim();
+      if (!firstProductId) return;
+      const thumb = getProductImageUrl(firstProduct);
+      const { price, originalPrice, discountLabel } = resolveProductPricing(firstProduct);
+      onProductPress({
+        id: firstProductId,
+        name: firstProduct.name || cat.label,
+        price,
+        originalPrice,
+        discount: discountLabel,
+        image: thumb ? { uri: thumb } : IMG_PROD_MUG,
+      });
+    } finally {
+      setOpeningCategoryId(null);
+    }
+  }, [onProductPress]);
 
   React.useEffect(() => {
     const query = search.trim();
@@ -233,12 +287,12 @@ export function GiftStoreScreen() {
   return (
     <SafeScreen>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()} hitSlop={12}>
           <ChevronLeft size={24} color={t.iconDefault} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Gift Store</Text>
-        <TouchableOpacity style={[styles.gridBtn, { borderColor: t.border }]} activeOpacity={0.7}>
-          <LayoutGrid size={20} color={t.textPrimary} />
+        <TouchableOpacity style={[styles.headerIconBtn, styles.gridBtn, { borderColor: t.border }]} activeOpacity={0.7}>
+          <Grid2x2 size={18} color={t.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -291,7 +345,7 @@ export function GiftStoreScreen() {
                 {searchResults.map((item) => (
                   <TouchableOpacity
                     key={item.id}
-                    style={[styles.catalogCard, shadow(), { backgroundColor: t.card }]}
+                    style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
                     activeOpacity={0.85}
                     onPress={() => onProductPress(item)}
                   >
@@ -312,28 +366,44 @@ export function GiftStoreScreen() {
           </>
         ) : (
           <>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.catRow}
-          nestedScrollEnabled
-        >
+        <View style={styles.categoryGrid}>
           {displayCategories.map((cat) => (
-            <TouchableOpacity key={cat.id} style={[styles.catCard, { backgroundColor: cat.color }]} activeOpacity={0.8}>
-              <View style={styles.catImgWrap}>
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.catCard,
+                {
+                  backgroundColor: mode === 'dark' ? t.card : cat.color,
+                  borderColor: mode === 'dark' ? t.border : 'rgba(17,24,39,0.05)',
+                },
+              ]}
+              activeOpacity={0.82}
+              onPress={() => onCategoryPress(cat)}
+            >
+              <View
+                style={[
+                  styles.catImgWrap,
+                  {
+                    backgroundColor: mode === 'dark' ? t.surface : '#FFFFFF',
+                    borderColor: mode === 'dark' ? t.border : 'rgba(17,24,39,0.05)',
+                  },
+                ]}
+              >
                 {cat.image ? (
                   <Image source={cat.image} style={styles.catImg} resizeMode="cover" />
                 ) : (
-                  <View style={[styles.catImg, styles.catPlaceholder, { backgroundColor: t.card }]}>
-                    <LayoutGrid size={18} color={t.placeholder} />
+                  <View style={[styles.catImg, styles.catPlaceholder, { backgroundColor: mode === 'dark' ? t.surface : '#FFFFFF' }]}>
+                    <Grid2x2 size={16} color={t.placeholder} />
                   </View>
                 )}
               </View>
-              <Text style={[styles.catLabel, { color: t.textMuted }]} numberOfLines={2}>{cat.label}</Text>
+              {openingCategoryId === cat.id ? (
+                <ActivityIndicator size="small" color={t.textPrimary} style={styles.catLoading} />
+              ) : null}
+              <Text style={[styles.catLabel, { color: t.textPrimary }]} numberOfLines={2}>{cat.label}</Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         {/* Best Sellers */}
         {displayBestSellers.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Best seller</Text>}
@@ -341,7 +411,7 @@ export function GiftStoreScreen() {
           {displayBestSellers.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.catalogCard, shadow(), { backgroundColor: t.card }]}
+              style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
@@ -357,6 +427,11 @@ export function GiftStoreScreen() {
         {/* Bloom & Gift Banner */}
         <View style={styles.bannerWrap}>
           <Image source={bannerUris[0] ? { uri: bannerUris[0] } : IMG_GIFT_BANNER_PRIMARY} style={styles.bannerImage} resizeMode="cover" />
+          <View style={[styles.bannerOverlay, { backgroundColor: mode === 'dark' ? 'rgba(18,18,18,0.38)' : 'rgba(255, 221, 223, 0.14)' }]}>
+            <Text style={[styles.bannerKicker, { color: mode === 'dark' ? '#F6D9D7' : '#83503D' }]}>FLOWER</Text>
+            <Text style={[styles.bannerTitle, { color: mode === 'dark' ? '#FFF5F3' : '#5B2C2F' }]}>Bloom & Gift</Text>
+            <Text style={[styles.bannerSub, { color: mode === 'dark' ? '#F0D9D4' : '#704A4C' }]}>Crafted bouquets and keepsakes for warm, memorable gifting.</Text>
+          </View>
         </View>
 
         {/* New Arrivals */}
@@ -365,7 +440,7 @@ export function GiftStoreScreen() {
           {displayNewArrivals.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.catalogCard, shadow(), { backgroundColor: t.card }]}
+              style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
@@ -384,9 +459,10 @@ export function GiftStoreScreen() {
         </View>
 
         {/* Delivery Cards */}
+        <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Shop by delivery type</Text>
         <View style={styles.deliveryRow}>
           {DELIVERY_CARDS.map((d) => (
-            <View key={d.id} style={[styles.deliveryCard, { backgroundColor: t.card }, shadow()]}>
+            <View key={d.id} style={[styles.deliveryCard, { backgroundColor: t.card, borderColor: t.border }, shadow()]}>
               <Image source={d.image} style={styles.deliveryImg} resizeMode="cover" />
               <Text style={[styles.deliveryLabel, { color: t.textPrimary }]}>{d.label}</Text>
             </View>
@@ -394,12 +470,17 @@ export function GiftStoreScreen() {
         </View>
 
         {/* Recently Viewed */}
-        {displayRecent.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Recently Viewed</Text>}
+        {displayRecent.length > 0 && (
+          <View style={styles.recentHeader}>
+            <Text style={[styles.sectionTitleCompact, { color: t.textPrimary }]}>Recently Viewed</Text>
+            <Clock3 size={15} color={t.placeholder} />
+          </View>
+        )}
         <View style={styles.catalogGrid}>
           {displayRecent.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.catalogCard, shadow(), { backgroundColor: t.card }]}
+              style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
@@ -434,7 +515,7 @@ export function GiftStoreScreen() {
           {displayAllProducts.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.productCard, shadow(), { backgroundColor: t.card }]}
+              style={[styles.productCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
@@ -465,40 +546,44 @@ export function GiftStoreScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 100,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 10,
     minHeight: 52,
-    gap: 12,
+    gap: 10,
+  },
+  headerIconBtn: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
+    fontSize: 18.5,
     lineHeight: 24,
     textAlign: 'center',
     flex: 1,
   },
   gridBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     borderWidth: 1,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.lg,
+    marginHorizontal: 16,
     gap: 10,
-    marginBottom: Spacing.md,
+    marginBottom: 14,
   },
   searchBar: {
     flex: 1,
@@ -507,41 +592,45 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
     paddingHorizontal: 2,
-    height: 44,
+    height: 40,
     gap: 10,
   },
   searchPlaceholder: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
+    fontSize: 15,
   },
   inlineLoadingWrap: {
     paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catRow: {
-    paddingHorizontal: Spacing.lg,
-    gap: 10,
-    paddingBottom: Spacing.md,
-    paddingRight: 6,
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    rowGap: 10,
+    columnGap: 8,
+    paddingBottom: 16,
   },
   catCard: {
-    width: 80,
-    minHeight: 106,
-    borderRadius: 14,
+    width: '23%',
+    minHeight: 100,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.06)',
+    paddingVertical: 8,
+    paddingHorizontal: 5,
+    borderWidth: 0.8,
+    borderColor: 'rgba(17,24,39,0.05)',
   },
   catImgWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 6,
+    borderWidth: 1,
   },
   catImg: {
     width: '100%',
@@ -553,138 +642,181 @@ const styles = StyleSheet.create({
   },
   catLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 10,
+    fontSize: 11,
+    lineHeight: 14,
     textAlign: 'center',
   },
+  catLoading: {
+    marginBottom: 4,
+  },
   bannerWrap: {
-    marginHorizontal: Spacing.lg,
-    borderRadius: 16,
+    marginHorizontal: 16,
+    borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: Spacing.lg,
-    marginTop: Spacing.sm,
+    marginBottom: 16,
+    marginTop: 4,
+    position: 'relative',
   },
   bannerImage: {
     width: '100%',
-    height: scale(175),
+    height: scale(118),
   },
   bannerImageLarge: {
     width: '100%',
-    height: scale(195),
+    height: scale(92),
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    justifyContent: 'center',
+  },
+  bannerKicker: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 10,
+    letterSpacing: 2.2,
+    marginBottom: 2,
+  },
+  bannerTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 20,
+    lineHeight: 24,
+    marginBottom: 4,
+  },
+  bannerSub: {
+    maxWidth: '62%',
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 10.5,
+    lineHeight: 14,
   },
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 17,
-    lineHeight: 22,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.sm,
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    marginTop: 2,
+    textTransform: 'none',
+  },
+  sectionTitleCompact: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 20,
   },
   catalogGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    gap: 12,
-    paddingBottom: Spacing.md,
+    paddingHorizontal: 16,
+    rowGap: 12,
+    columnGap: 10,
+    paddingBottom: 14,
   },
   catalogCard: {
     width: '48%',
-    borderRadius: 16,
+    borderRadius: 6,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E8EAF0',
+    borderWidth: 0.8,
     paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
   catalogImg: {
     width: '100%',
-    height: scale(160),
-  },
-  cardInfo: {
-    paddingHorizontal: 11,
-    paddingTop: 10,
-    gap: 4,
+    height: scale(126),
   },
   cardInfoName: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12.5,
-    lineHeight: 17,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   cardInfoPrice: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12.5,
   },
   deliveryRow: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.lg,
-    gap: 12,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 14,
   },
   deliveryCard: {
     flex: 1,
     minWidth: 0,
-    borderRadius: 14,
+    borderRadius: 8,
     overflow: 'hidden',
     alignItems: 'center',
-    paddingBottom: 12,
+    paddingBottom: 8,
+    borderWidth: 0.8,
   },
   deliveryImg: {
     width: '100%',
-    height: scale(120),
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: scale(96),
   },
   deliveryLabel: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    marginTop: 8,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11,
+    marginTop: 7,
   },
   cardInfoWrap: {
-    paddingHorizontal: 11,
-    paddingTop: 11,
-    gap: 5,
+    paddingHorizontal: 8,
+    paddingTop: 7,
+    gap: 3,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     flexWrap: 'wrap',
-    marginTop: 2,
+    marginTop: 1,
   },
   oldPrice: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 10.5,
+    fontSize: 9,
     textDecorationLine: 'line-through',
   },
   discountBadge: {
     backgroundColor: '#E8F8EE',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
   },
   discountText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 9.5,
+    fontSize: 8,
     color: '#00A63E',
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    marginTop: 2,
   },
   allProductsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    gap: 12,
+    paddingHorizontal: 16,
+    rowGap: 12,
+    columnGap: 10,
     paddingBottom: 20,
   },
   productCard: {
     width: '48%',
-    borderRadius: 16,
+    borderRadius: 6,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E8EAF0',
+    borderWidth: 0.8,
     paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
   productImg: {
     width: '100%',
-    height: scale(160),
+    height: scale(130),
   },
   loadingWrap: { paddingVertical: 60, alignItems: 'center' },
   errorWrap: { paddingVertical: 40, paddingHorizontal: Spacing.lg, alignItems: 'center', gap: 6 },

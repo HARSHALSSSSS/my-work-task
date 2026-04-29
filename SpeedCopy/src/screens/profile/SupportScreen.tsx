@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     color: '#242424',
     textAlign: 'center',
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
+    fontSize: 23,
     lineHeight: 30,
     color: '#000000',
   },
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   catLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     color: '#000000',
   },
   ticketBanner: {
@@ -242,14 +242,14 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
+    fontSize: 19,
     color: '#FFFFFF',
   },
   bannerSub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
-    lineHeight: 19,
+    lineHeight: 20,
   },
   raiseBtn: {
     flexDirection: 'row',
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   },
   raiseBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFFFFF',
   },
   ticketHeader: {
@@ -274,13 +274,13 @@ const styles = StyleSheet.create({
   },
   ticketTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 22,
+    fontSize: 21,
+    lineHeight: 24,
     color: '#000000',
   },
   viewAllLink: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: '#2F80ED',
   },
   ticketList: {
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   },
   ticketId: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B6B6B',
   },
   ticketBadge: {
@@ -314,17 +314,17 @@ const styles = StyleSheet.create({
   },
   ticketBadgeText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
+    fontSize: 12,
   },
   ticketDesc: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 22,
     color: '#000000',
   },
   ticketUpdated: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 12,
+    fontSize: 13,
     color: '#A5A5A5',
   },
   emptyBox: {
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
   },
 });

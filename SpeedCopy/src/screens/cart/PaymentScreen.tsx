@@ -33,7 +33,7 @@ function shadow(e = 2) {
 }
 
 export function PaymentScreen() {
-  const { colors: t } = useThemeStore();
+  const { colors: t, mode } = useThemeStore();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const addressId = route.params?.addressId;
@@ -102,9 +102,17 @@ export function PaymentScreen() {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {hasUnavailableItems ? (
-          <View style={styles.stockAlert}>
-            <Text style={styles.stockAlertTitle}>Some items are out of stock</Text>
-            <Text style={styles.stockAlertText}>Please return to cart and remove unavailable items.</Text>
+          <View
+            style={[
+              styles.stockAlert,
+              {
+                backgroundColor: mode === 'dark' ? 'rgba(185, 28, 28, 0.18)' : '#FEF2F2',
+                borderColor: mode === 'dark' ? 'rgba(248, 113, 113, 0.45)' : '#FECACA',
+              },
+            ]}
+          >
+            <Text style={[styles.stockAlertTitle, { color: mode === 'dark' ? '#FCA5A5' : '#B91C1C' }]}>Some items are out of stock</Text>
+            <Text style={[styles.stockAlertText, { color: mode === 'dark' ? '#FECACA' : '#991B1B' }]}>Please return to cart and remove unavailable items.</Text>
           </View>
         ) : null}
 
@@ -115,7 +123,7 @@ export function PaymentScreen() {
         {/* Item Card */}
         {items.length > 0 ? (
           items.map((item) => (
-            <View key={item.id} style={[styles.itemCard, shadow(), { backgroundColor: t.card }]}>
+            <View key={item.id} style={[styles.itemCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}>
               <View style={styles.itemRow}>
                 <View style={[styles.thumbWrap, { backgroundColor: t.chipBg, borderColor: t.border }]}>
                   {item.image ? (
@@ -138,7 +146,7 @@ export function PaymentScreen() {
             </View>
           ))
         ) : (
-          <View style={[styles.itemCard, shadow(), { backgroundColor: t.card }]}>
+          <View style={[styles.itemCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}>
             <Text style={[styles.emptyText, { color: t.placeholder }]}>No items in cart</Text>
           </View>
         )}
@@ -168,7 +176,7 @@ export function PaymentScreen() {
 
         {/* Payment Method */}
         <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Payment Method</Text>
-        <View style={[styles.payMethodCard, shadow(), { backgroundColor: t.card }]}>
+        <View style={[styles.payMethodCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}>
           <View style={[styles.payMethodIcon, { backgroundColor: t.chipBg }]}>
             <Smartphone size={18} color={t.iconDefault} />
           </View>
@@ -182,7 +190,7 @@ export function PaymentScreen() {
         </View>
 
         {/* Price Details */}
-        <View style={styles.priceCard}>
+        <View style={[styles.priceCard, { backgroundColor: t.card, borderColor: t.border }]}>
           <Text style={[styles.priceHeading, { color: t.textPrimary }]}>Price Details</Text>
 
           <View style={styles.priceRow}>
@@ -202,7 +210,7 @@ export function PaymentScreen() {
             <Text style={[styles.priceValue, styles.greenText]}>Free</Text>
           </View>
 
-          <View style={[styles.priceDivider, { backgroundColor: '#D1FAE5' }]} />
+          <View style={[styles.priceDivider, { backgroundColor: mode === 'dark' ? 'rgba(16, 185, 129, 0.22)' : '#D1FAE5' }]} />
 
           <View style={styles.priceRow}>
             <Text style={[styles.totalLabel, { color: t.textPrimary }]}>Total payable</Text>
@@ -305,6 +313,7 @@ const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
+    borderWidth: 1,
     padding: Spacing.sm,
     marginBottom: Spacing.sm,
   },
@@ -434,6 +443,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
+    borderWidth: 1,
     padding: 14,
     gap: 12,
     marginBottom: 20,

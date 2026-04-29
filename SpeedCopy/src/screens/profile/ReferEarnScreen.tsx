@@ -55,7 +55,7 @@ export const ReferEarnScreen: React.FC = () => {
   const onInvite = async () => {
     try {
       await Share.share({
-        message: `Hey! Use my referral code ${referralCode} on SpeedCopy and we both get â‚¹${rewardPerFriend || 100}! Download now.`,
+        message: `Hey! Use my referral code ${referralCode} on SpeedCopy and we both get ₹${rewardPerFriend || 100}! Download now.`,
       });
     } catch { /* user cancelled */ }
   };
@@ -86,7 +86,7 @@ export const ReferEarnScreen: React.FC = () => {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>{`Invite friends and\nearn â‚¹${rewardPerFriend || 100}`}</Text>
+          <Text style={styles.heroTitle}>{`Invite friends and\nearn ₹${rewardPerFriend || 100}`}</Text>
           <Text style={[styles.heroSubtitle, { color: t.textSecondary }]}>
             Share your code with friends. Once they place their first order, you both get rewards
           </Text>
@@ -138,7 +138,7 @@ export const ReferEarnScreen: React.FC = () => {
               </View>
               <View style={[styles.statDivider, { backgroundColor: t.border }]} />
               <View style={styles.stat}>
-                <Text style={[styles.statValue, { color: Colors.purplePrimary }]}>â‚¹{totalEarned}</Text>
+                <Text style={[styles.statValue, { color: Colors.purplePrimary }]}>₹{totalEarned}</Text>
                 <Text style={[styles.statLabel, { color: t.textSecondary }]}>Earned</Text>
               </View>
             </View>
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     color: '#242424',
     textAlign: 'center',
@@ -187,14 +187,14 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 26,
+    fontSize: 28,
     lineHeight: 34,
     color: Colors.purplePrimary,
     textAlign: 'center',
   },
   heroSubtitle: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   codeLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textSecondary,
     letterSpacing: 1,
   },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   codeText: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
+    fontSize: 24,
     color: Colors.textDark,
     flex: 1,
   },
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   copyBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.surface,
   },
   shareSection: {
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   shareTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     color: Colors.textDark,
   },
   shareRow: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   },
   shareLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textDark,
   },
   statusCard: {
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   },
   statusTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     color: Colors.textDark,
     textAlign: 'center',
   },
@@ -298,12 +298,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 20,
+    fontSize: 21,
     color: Colors.textDark,
   },
   statLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textSecondary,
   },
   statDivider: {
@@ -317,16 +317,16 @@ const styles = StyleSheet.create({
   },
   termsTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.blueAccent,
     textDecorationLine: 'underline',
   },
   termsBody: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
+    fontSize: 12,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
   },
 });
 

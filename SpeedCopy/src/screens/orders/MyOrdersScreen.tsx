@@ -7,7 +7,7 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useOrderStore } from '../../store/useOrderStore';
 import { OrdersStackParamList } from '../../navigation/types';
-import { getProductImageUrl, toAbsoluteAssetUrl } from '../../utils/product';
+import { getProductImageCandidates, getProductImageUrl, toAbsoluteAssetUrl } from '../../utils/product';
 import { formatCurrency } from '../../utils/formatCurrency';
 import * as ordersApi from '../../api/orders';
 import * as productsApi from '../../api/products';
@@ -26,6 +26,48 @@ interface DisplayOrder {
   category: Category;
   initials: string;
   image?: string;
+  imageCandidates?: string[];
+}
+
+function OrderImage({
+  image,
+  imageCandidates,
+  backgroundColor,
+  fallback: FallbackIcon,
+  fallbackColor,
+}: {
+  image?: string;
+  imageCandidates?: string[];
+  backgroundColor: string;
+  fallback: React.ElementType;
+  fallbackColor: string;
+}) {
+  const candidates = React.useMemo(
+    () => Array.from(new Set((imageCandidates?.length ? imageCandidates : image ? [toAbsoluteAssetUrl(image)] : []).filter(Boolean))),
+    [image, imageCandidates],
+  );
+  const [imageIndex, setImageIndex] = useState(0);
+
+  useEffect(() => {
+    setImageIndex(0);
+  }, [image, imageCandidates]);
+
+  const activeUri = candidates[imageIndex];
+
+  return (
+    <View style={[styles.productImg, { backgroundColor }]}>
+      {activeUri ? (
+        <Image
+          source={{ uri: activeUri }}
+          style={styles.productImageActual}
+          resizeMode="cover"
+          onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
+        />
+      ) : (
+        <FallbackIcon size={30} color={fallbackColor} />
+      )}
+    </View>
+  );
 }
 
 const CAT_CFG: Record<Category, { label: string; icon: React.ElementType; bg: string; stroke: string }> = {
@@ -60,7 +102,7 @@ export const MyOrdersScreen: React.FC = () => {
     const missingImageOrders = storeOrders.filter((order) => {
       const firstItem = order.items[0];
       if (!firstItem) return false;
-      const currentImage = getProductImageUrl(firstItem) || toAbsoluteAssetUrl(firstItem.image);
+      const currentImage = getProductImageCandidates(firstItem)[0] || toAbsoluteAssetUrl(firstItem.image);
       return !currentImage;
     });
 
@@ -72,19 +114,19 @@ export const MyOrdersScreen: React.FC = () => {
         try {
           const backendOrder = await ordersApi.getOrder(order.id).catch(() => null);
           const backendItem = backendOrder?.items?.[0];
-          const orderItemImage = getProductImageUrl(backendItem) || toAbsoluteAssetUrl(backendItem?.thumbnail);
+          const orderItemImage = getProductImageCandidates(backendItem)[0] || toAbsoluteAssetUrl(backendItem?.thumbnail);
           if (orderItemImage) {
             return { orderId: order.id, image: orderItemImage };
           }
-          if (backendItem?.flowType === 'shopping') {
-            const shoppingProduct = await productsApi.getShoppingProduct(backendItem.productSlug || backendItem.productId).catch(() => null);
+          if (backendItem?.flowType === 'shopping' && backendItem?.productId) {
+            const shoppingProduct = await productsApi.getShoppingProduct(backendItem.productId).catch(() => null);
             const shoppingImage = getProductImageUrl(shoppingProduct);
             if (shoppingImage) {
               return { orderId: order.id, image: shoppingImage };
             }
           }
-          if (backendItem?.flowType === 'gifting') {
-            const giftingProduct = await productsApi.getGiftingProduct(backendItem.productSlug || backendItem.productId).catch(() => null);
+          if (backendItem?.flowType === 'gifting' && backendItem?.productId) {
+            const giftingProduct = await productsApi.getGiftingProduct(backendItem.productId).catch(() => null);
             const giftingImage = getProductImageUrl(giftingProduct);
             if (giftingImage) {
               return { orderId: order.id, image: giftingImage };
@@ -127,6 +169,15 @@ export const MyOrdersScreen: React.FC = () => {
     ) as Category,
     initials: (o.items[0]?.name || 'OR').slice(0, 2).toUpperCase(),
     image: imageOverrides[o.id] || getProductImageUrl(o.items[0]) || toAbsoluteAssetUrl(o.items[0]?.image),
+    imageCandidates: Array.from(
+      new Set(
+        [
+          ...(imageOverrides[o.id] ? [imageOverrides[o.id]] : []),
+          ...getProductImageCandidates(o.items[0]),
+          toAbsoluteAssetUrl(o.items[0]?.image),
+        ].filter(Boolean),
+      ),
+    ),
   }));
 
   const onReorder = useCallback(async (orderId: string) => {
@@ -180,13 +231,13 @@ export const MyOrdersScreen: React.FC = () => {
               </View>
 
               <View style={styles.orderBody}>
-                <View style={[styles.productImg, { backgroundColor: cat.bg }]}>
-                  {order.image ? (
-                    <Image source={{ uri: order.image }} style={styles.productImageActual} resizeMode="cover" />
-                  ) : (
-                    <CatIcon size={30} color={cat.stroke} />
-                  )}
-                </View>
+                <OrderImage
+                  image={order.image}
+                  imageCandidates={order.imageCandidates}
+                  backgroundColor={cat.bg}
+                  fallback={CatIcon}
+                  fallbackColor={cat.stroke}
+                />
                 <View style={styles.productInfo}>
                   <Text style={[styles.productName, { color: t.textPrimary }]}>{order.name}</Text>
                   <Text style={[styles.productDetails, { color: t.textSecondary }]}>{order.details}</Text>

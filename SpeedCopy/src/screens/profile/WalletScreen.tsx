@@ -29,7 +29,7 @@ function txnIcon(description: string, type: 'credit' | 'debit'): React.ElementTy
 }
 
 export const WalletScreen: React.FC = () => {
-  const { colors: t } = useThemeStore();
+  const { colors: t, mode } = useThemeStore();
   const navigation = useNavigation<Nav>();
   const { walletBalance, walletTransactions, fetchWallet } = useOrderStore();
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export const WalletScreen: React.FC = () => {
           <View style={styles.balanceInfo}>
             <Text style={styles.walletLabel}>SpeedCopy Wallet</Text>
             <View style={styles.balanceRow}>
-              <Text style={styles.balanceAmount}>â‚¹{walletBalance || 0}</Text>
+              <Text style={styles.balanceAmount}>₹{walletBalance || 0}</Text>
               <Text style={styles.balanceSub}>Available Balance</Text>
             </View>
           </View>
@@ -94,8 +94,16 @@ export const WalletScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.infoBar}>
-          <AlertCircle size={24} color="#2F80ED" />
+        <View
+          style={[
+            styles.infoBar,
+            {
+              backgroundColor: mode === 'dark' ? 'rgba(47, 128, 237, 0.16)' : 'rgba(47, 128, 237, 0.2)',
+              borderColor: mode === 'dark' ? 'rgba(86, 167, 255, 0.4)' : '#2F80ED',
+            },
+          ]}
+        >
+          <AlertCircle size={24} color={mode === 'dark' ? '#86C5FF' : '#2F80ED'} />
           <Text style={[styles.infoText, { color: t.textPrimary }]}>
             Use your wallet balance on your next order for instant discount at checkout.
           </Text>
@@ -104,7 +112,7 @@ export const WalletScreen: React.FC = () => {
         <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Recent Transactions</Text>
 
         {loading ? (
-          <ActivityIndicator size="small" color="#2F80ED" style={{ marginTop: 20 }} />
+          <ActivityIndicator size="small" color={t.textPrimary} style={{ marginTop: 20 }} />
         ) : txns.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={[styles.emptyText, { color: t.textSecondary }]}>No transactions yet</Text>
@@ -115,7 +123,7 @@ export const WalletScreen: React.FC = () => {
               const isCredit = txn.type === 'credit';
               const Icon = txn.icon;
               return (
-                <View key={txn.id} style={[styles.txnRow, { backgroundColor: t.card }]}>
+                <View key={txn.id} style={[styles.txnRow, { backgroundColor: t.card, borderColor: t.border }]}>
                   <View style={styles.txnLeft}>
                     <View style={[styles.txnIconBox, { backgroundColor: isCredit ? 'rgba(0, 195, 73, 0.2)' : 'rgba(235, 87, 87, 0.2)' }]}>
                       <Icon size={18} color={isCredit ? '#00C349' : '#EB5757'} />
@@ -126,7 +134,7 @@ export const WalletScreen: React.FC = () => {
                     </View>
                   </View>
                   <Text style={[styles.txnAmount, { color: isCredit ? '#00C349' : '#EB5757' }]}>
-                    {isCredit ? '+' : '-'}â‚¹{txn.amount}
+                    {isCredit ? '+' : '-'}₹{txn.amount}
                   </Text>
                 </View>
               );
@@ -149,7 +157,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     color: '#242424',
     textAlign: 'center',
@@ -181,8 +189,8 @@ const styles = StyleSheet.create({
   },
   walletLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 20,
-    lineHeight: 22,
+    fontSize: 21,
+    lineHeight: 24,
     color: '#FFFFFF',
   },
   balanceRow: {
@@ -190,23 +198,21 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 24,
-    lineHeight: 22,
+    fontSize: 25,
+    lineHeight: 24,
     color: '#FFFFFF',
   },
   balanceSub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 24,
     color: 'rgba(255,255,255,0.8)',
   },
   infoBar: {
     flexDirection: 'row',
     gap: 12,
     padding: 10,
-    backgroundColor: 'rgba(47, 128, 237, 0.2)',
     borderWidth: 0.5,
-    borderColor: '#2F80ED',
     borderRadius: 12,
     alignItems: 'flex-start',
     marginBottom: 20,
@@ -225,7 +231,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
+    fontSize: 14,
   },
   actionBtnOutline: {
     flex: 1,
@@ -237,19 +243,19 @@ const styles = StyleSheet.create({
   },
   actionBtnOutlineText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
+    fontSize: 14,
   },
   infoText: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
     color: '#000000',
     flex: 1,
   },
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 22,
+    fontSize: 21,
+    lineHeight: 24,
     color: '#000000',
     marginBottom: 20,
   },
@@ -260,9 +266,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAFAFA',
     borderRadius: 12,
     padding: 10,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -286,19 +292,19 @@ const styles = StyleSheet.create({
   },
   txnLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 24,
     color: '#000000',
   },
   txnDate: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
     color: '#6B6B6B',
   },
   txnAmount: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 23,
     textAlign: 'center',
   },
@@ -308,7 +314,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
   },
 });
 

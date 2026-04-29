@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { CartItem } from '../types';
 import * as cartApi from '../api/cart';
 import { getToken } from '../api/client';
-import { inferFlowTypeFromItemId, isLikelyMongoId } from '../utils/product';
+import { getProductImageUrl, inferFlowTypeFromItemId, isLikelyMongoId } from '../utils/product';
 
 interface CartState {
   items: CartItem[];
@@ -37,7 +37,7 @@ function mapBackendToLocal(b: cartApi.BackendCart): { items: CartItem[]; backend
       quantity: bi.quantity,
       price: bi.unitPrice,
       name: bi.productName,
-      image: bi.thumbnail || '',
+      image: getProductImageUrl(bi) || bi.thumbnail || '',
     })),
   };
 }

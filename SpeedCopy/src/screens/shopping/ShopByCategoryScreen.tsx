@@ -298,7 +298,13 @@ export function ShopByCategoryScreen() {
                   key={cat.id}
                   style={styles.catItem}
                   activeOpacity={0.8}
-                  onPress={() => navigation.navigate('StationeryList', { category: cat.categoryParam })}
+                  onPress={() => navigation.navigate('StationeryList', {
+                    category: cat.categoryParam,
+                    categoryName: cat.label.replace('\n', ' '),
+                    bannerImage: cat.imageSource && typeof cat.imageSource === 'object' && 'uri' in (cat.imageSource as any)
+                      ? (cat.imageSource as any).uri
+                      : undefined,
+                  })}
                 >
                   <View style={[styles.catCircle, { backgroundColor: t.chipBg }]}>
                     {cat.imageSource ? (
@@ -384,23 +390,23 @@ export function ShopByCategoryScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 100,
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
+    fontSize: 18.5,
     lineHeight: 24,
     textAlign: 'center',
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingTop: 4,
+    paddingBottom: 10,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.lg,
+    marginHorizontal: 16,
     gap: 10,
-    marginBottom: Spacing.lg,
+    marginBottom: 14,
   },
   searchBar: {
     flex: 1,
@@ -409,13 +415,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
     paddingHorizontal: 2,
-    height: 44,
+    height: 40,
     gap: 10,
   },
   searchPlaceholder: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
+    fontSize: 15,
   },
   inlineLoadingWrap: {
     paddingVertical: 20,
@@ -424,33 +430,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   bannerWrap: {
-    marginHorizontal: Spacing.lg,
-    borderRadius: 14,
+    marginHorizontal: 16,
+    borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: Spacing.xl,
+    marginBottom: 16,
   },
   bannerImage: {
     width: '100%',
-    height: scale(175),
-    borderRadius: 14,
+    height: scale(118),
   },
   catRow: {
     flexDirection: 'row',
     gap: 10,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: 16,
+    marginBottom: 14,
     paddingRight: 6,
   },
   catItem: {
     alignItems: 'center',
-    gap: 8,
-    width: 90,
-    minHeight: 110,
+    gap: 6,
+    width: 82,
+    minHeight: 100,
   },
   catCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -463,70 +468,71 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium',
     fontSize: 11,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 17,
-    lineHeight: 24,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   productGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    gap: 12,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: 16,
+    rowGap: 12,
+    columnGap: 10,
+    marginBottom: 14,
   },
   productCard: {
     width: '48%',
-    borderRadius: 16,
+    borderRadius: 6,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E8EAF0',
+    borderWidth: 0.8,
+    borderColor: '#E8DED9',
     paddingBottom: 12,
   },
   productImg: {
     width: '100%',
-    height: scale(165),
+    height: scale(126),
   },
   cardInfo: {
-    paddingHorizontal: 12,
-    paddingTop: 11,
+    paddingHorizontal: 8,
+    paddingTop: 8,
     gap: 5,
   },
   cardName: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   cardPrice: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12.5,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     flexWrap: 'wrap',
-    marginTop: 2,
+    marginTop: 1,
   },
   oldPrice: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 10.5,
+    fontSize: 9.5,
     textDecorationLine: 'line-through',
   },
   discountBadge: {
     backgroundColor: '#E8F8EE',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
   },
   discountText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 9.5,
+    fontSize: 8,
     color: '#00A63E',
   },
 });

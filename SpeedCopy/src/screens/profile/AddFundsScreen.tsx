@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     textAlign: 'center',
   },
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: 1,
   },
   amountCard: {
@@ -408,11 +408,11 @@ const styles = StyleSheet.create({
   },
   currencySymbol: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 28,
+    fontSize: 30,
   },
   amountInput: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 28,
+    fontSize: 30,
     minWidth: 80,
     textAlign: 'center',
   },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   quickBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
+    fontSize: 14,
   },
   methodsHeader: {
     flexDirection: 'row',
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   changeLink: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
+    fontSize: 12,
     color: '#7AB1F1',
     letterSpacing: 0.5,
     textDecorationLine: 'underline',
@@ -465,12 +465,12 @@ const styles = StyleSheet.create({
   },
   cardNumber: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     flexShrink: 1,
   },
   cardExpiry: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 11,
+    fontSize: 12,
     flexShrink: 1,
   },
   logoStrip: {
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 9.5,
+    fontSize: 10.5,
   },
   logoIconPill: {
     marginTop: 6,
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   },
   addMethodText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
   },
   speedPayCard: {
     borderRadius: 12,
@@ -534,13 +534,13 @@ const styles = StyleSheet.create({
   },
   speedPayBadgeText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 9,
+    fontSize: 10,
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   speedPayTitle: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
   },
   footer: {
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },

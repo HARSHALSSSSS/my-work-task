@@ -28,7 +28,13 @@ export function isCatalogProductInStock(product: any): boolean {
   // Detect backend bug: shopping products without variants get in_stock=false
   // because backend pre('validate') hook does: this.in_stock = this.stock > 0
   // and stock defaults to 0 when not provided.
-  if (apiInStock === false && variants.length === 0 && rawStock === 0) {
+  if (apiInStock === false && variants.length === 0 && (rawStock === 0 || rawStock === null)) {
+    return true;
+  }
+
+  // Some catalog endpoints omit stock fields entirely. In that case, keep the
+  // product browsable instead of showing a false out-of-stock badge.
+  if (apiInStock == null && variants.length === 0 && rawStock === null) {
     return true;
   }
 
@@ -65,10 +71,14 @@ export function getLiveStockState(product: any, requestedQty = 1): LiveStockStat
   const rawStock = typeof product?.stock === 'number' ? product.stock : null;
 
   // Detect backend bug for shopping products without variants
-  const isLikelyBackendBug = apiInStock === false && variants.length === 0 && rawStock === 0;
+  const isLikelyBackendBug = apiInStock === false && variants.length === 0 && (rawStock === 0 || rawStock === null);
 
   if (isLikelyBackendBug) {
     // Treat as available for UI; backend will validate at checkout
+    return { inStock: true, availableStock: null, message: '' };
+  }
+
+  if (apiInStock == null && variants.length === 0 && rawStock === null) {
     return { inStock: true, availableStock: null, message: '' };
   }
 

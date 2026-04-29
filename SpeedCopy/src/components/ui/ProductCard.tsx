@@ -5,7 +5,7 @@ import { Colors, Typography, Radii, Shadows, Spacing } from '../../constants/the
 import { useThemeStore } from '../../store/useThemeStore';
 import { Product } from '../../types';
 import { formatPrice } from '../../utils/formatCurrency';
-import { toAbsoluteAssetUrl } from '../../utils/product';
+import { getProductImageCandidates, toAbsoluteAssetUrl } from '../../utils/product';
 
 interface ProductCardProps {
   product: Product;
@@ -23,9 +23,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   compact = false,
 }) => {
   const { colors: t } = useThemeStore();
-  const [imageFailed, setImageFailed] = React.useState(false);
-  const imageUri = toAbsoluteAssetUrl(product.image);
-  const showImage = Boolean(imageUri) && !imageFailed;
+  const imageCandidates = React.useMemo(() => {
+    const candidates = getProductImageCandidates(product);
+    if (candidates.length > 0) return candidates;
+    const fallback = toAbsoluteAssetUrl(product.image);
+    return fallback ? [fallback] : [];
+  }, [product]);
+  const [imageIndex, setImageIndex] = React.useState(0);
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [product.id, product.image]);
+  const imageUri = imageCandidates[imageIndex] || '';
+  const showImage = Boolean(imageUri);
   const discountLabel =
     typeof product.discountLabel === 'string' && product.discountLabel.trim()
       ? product.discountLabel.trim()
@@ -50,7 +59,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             source={{ uri: imageUri }}
             style={styles.productImage}
             resizeMode="cover"
-            onError={() => setImageFailed(true)}
+            onError={() => setImageIndex((prev) => (prev + 1 < imageCandidates.length ? prev + 1 : imageCandidates.length))}
           />
         ) : (
           <View style={styles.imagePlaceholder}>

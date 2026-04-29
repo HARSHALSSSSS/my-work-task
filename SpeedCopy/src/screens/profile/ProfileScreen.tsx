@@ -335,10 +335,14 @@ const styles = StyleSheet.create({
   userName: {
     ...Typography.h4,
     fontFamily: 'Poppins_600SemiBold',
+    fontSize: 23,
+    lineHeight: 30,
     textAlign: 'center',
   },
   userMeta: {
     ...Typography.caption,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
   },
   darkModeRow: {
@@ -352,6 +356,8 @@ const styles = StyleSheet.create({
   },
   darkModeLabel: {
     ...Typography.subtitle,
+    fontSize: 15,
+    lineHeight: 22,
   },
   menuContainer: {
     gap: Spacing.sm,
@@ -383,6 +389,8 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     ...Typography.subtitle,
+    fontSize: 15,
+    lineHeight: 22,
     flexShrink: 1,
   },
   menuChevron: {
@@ -407,5 +415,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     ...Typography.bodyBold,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

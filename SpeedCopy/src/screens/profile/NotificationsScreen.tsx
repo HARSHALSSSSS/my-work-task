@@ -111,7 +111,7 @@ export const NotificationsScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Notifications</Text>
         <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={handleMarkAllRead}>
-          <Text style={styles.markRead}>mark all as read</Text>
+          <Text style={[styles.markRead, { color: t.textSecondary }]}>mark all as read</Text>
         </TouchableOpacity>
       </View>
 
@@ -152,7 +152,7 @@ export const NotificationsScreen: React.FC = () => {
               : BADGE_CFG[item.badge];
           const Icon = cfg.icon;
           return (
-            <View key={item.id} style={[styles.notifCard, { backgroundColor: t.card }]}>
+            <View key={item.id} style={[styles.notifCard, { backgroundColor: t.card, borderColor: t.border }]}>
               <View style={[styles.notifIconWrap, { backgroundColor: cfg.bg }]}>
                 <Icon size={20} color={cfg.color} />
               </View>
@@ -185,13 +185,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     color: '#242424',
   },
   markRead: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 12,
+    fontSize: 13,
     color: '#2F80ED',
     textDecorationLine: 'underline',
   },
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: '#000000',
   },
   tabTextActive: {
@@ -232,10 +232,10 @@ const styles = StyleSheet.create({
   },
   notifCard: {
     flexDirection: 'row',
-    backgroundColor: '#FAFAFA',
     borderRadius: 15,
     padding: 12,
     gap: 12,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
     color: '#000000',
     flex: 1,
@@ -274,17 +274,17 @@ const styles = StyleSheet.create({
   },
   notifBadgeText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 10,
+    fontSize: 11,
   },
   notifMsg: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B6B6B',
-    lineHeight: 18,
+    lineHeight: 19,
   },
   notifTime: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
+    fontSize: 12,
     color: '#A5A5A5',
     marginTop: 2,
   },
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
   },
 });
 

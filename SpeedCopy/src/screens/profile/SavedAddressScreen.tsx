@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     textAlign: 'center',
   },
@@ -278,12 +278,12 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
+    fontSize: 19,
     marginTop: 8,
   },
   emptySub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
   },
   addressCard: {
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   addrName: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 15,
+    fontSize: 16,
   },
   defaultBadge: {
     backgroundColor: 'rgba(76, 161, 175, 0.15)',
@@ -324,17 +324,17 @@ const styles = StyleSheet.create({
   },
   defaultBadgeText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 10,
+    fontSize: 11,
     color: '#4CA1AF',
   },
   addrLine: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 21,
   },
   addrPhone: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 4,
   },
   cardActions: {
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 12,
+    fontSize: 13,
   },
   formCard: {
     borderRadius: 16,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 17,
+    fontSize: 18,
     marginBottom: 8,
   },
   formRow: {
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
   },
   saveBtn: {
     flex: 1,
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
   },
   addBtn: {
     flexDirection: 'row',
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
+    fontSize: 15,
   },
 });
 

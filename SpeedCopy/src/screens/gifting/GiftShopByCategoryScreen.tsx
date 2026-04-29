@@ -19,7 +19,7 @@ import { Spacing } from '../../constants/theme';
 import { GiftStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, sortProducts } from '../../utils/product';
+import { dedupeProducts, getProductImageCandidates, getProductImageUrl, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 
 type Nav = NativeStackNavigationProp<GiftStackParamList, 'GiftShopByCategory'>;
@@ -30,10 +30,48 @@ type DesignItem = {
   category: string;
   isPremium: boolean;
   thumbnail?: string;
+  imageCandidates?: string[];
   price?: number;
   originalPrice?: number;
   discount?: string;
 };
+
+function DesignImage({
+  item,
+  placeholderColor,
+  iconColor,
+}: {
+  item: DesignItem;
+  placeholderColor: string;
+  iconColor: string;
+}) {
+  const candidates = React.useMemo(
+    () => (item.imageCandidates?.length ? item.imageCandidates : item.thumbnail ? [toAbsoluteAssetUrl(item.thumbnail)] : []),
+    [item.imageCandidates, item.thumbnail],
+  );
+  const [imageIndex, setImageIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [item.id, item.thumbnail, item.imageCandidates]);
+
+  const activeImage = candidates[imageIndex];
+
+  return (
+    <View style={[styles.designImgPlaceholder, { backgroundColor: placeholderColor }]}>
+      {activeImage ? (
+        <Image
+          source={{ uri: activeImage }}
+          style={styles.designImg}
+          resizeMode="cover"
+          onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
+        />
+      ) : (
+        <Gift size={48} color={iconColor} />
+      )}
+    </View>
+  );
+}
 
 export function GiftShopByCategoryScreen() {
   const navigation = useNavigation<Nav>();
@@ -52,24 +90,29 @@ export function GiftShopByCategoryScreen() {
     ]).then(([productsRes, catsRes]) => {
       const rawItems = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
       const items = sortProducts(dedupeProducts(rawItems));
-      const mapped = (items || [])
-        .map((p: any) => {
-          const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-          return {
-            id: p._id || p.id,
-            name: p.name || 'Product',
-            category: typeof p.category === 'object' ? p.category?.name : (p.category || 'All'),
-            isPremium: p.isFeatured || false,
-            thumbnail: getProductImageUrl(p),
-            price,
-            originalPrice,
-            discount: discountLabel,
-          };
-        })
-        .filter((p: DesignItem) => Boolean(p.id));
-      setDesignItems(dedupeProducts(mapped));
-      if (catsRes?.length) {
-        const uniqueChips = Array.from(new Set(catsRes.map((c: any) => c.name).filter(Boolean)));
+      return Promise.all(items.map(async (p: any) => {
+        const productId = String(p?._id || p?.id || '').trim();
+        const detailProduct = productId ? await productsApi.getGiftingProduct(productId).catch(() => null) : null;
+        const source = detailProduct || p;
+        const { price, originalPrice, discountLabel } = resolveProductPricing(source);
+        const imageCandidates = getProductImageCandidates(source);
+        return {
+          id: source._id || source.id || p._id || p.id,
+          name: source.name || p.name || 'Product',
+          category: typeof source.category === 'object' ? source.category?.name : (source.category || p.category || 'All'),
+          isPremium: source.isFeatured || p.isFeatured || false,
+          thumbnail: imageCandidates[0] || getProductImageUrl(source) || getProductImageUrl(p),
+          imageCandidates,
+          price,
+          originalPrice,
+          discount: discountLabel,
+        };
+      })).then((mappedItems) => {
+        const mapped = mappedItems.filter((p: DesignItem) => Boolean(p.id));
+        setDesignItems(dedupeProducts(mapped));
+      });
+      if ((catsRes || []).length) {
+        const uniqueChips = Array.from(new Set((catsRes || []).map((c: any) => c.name).filter(Boolean)));
         setFilterChips(['All', ...uniqueChips]);
       } else {
         setFilterChips(['All', 'Birthday', 'Love', 'Anniversary']);
@@ -152,7 +195,7 @@ export function GiftShopByCategoryScreen() {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.designCard, { backgroundColor: t.card }]}
+              style={[styles.designCard, { backgroundColor: t.card, borderColor: t.border }]}
               activeOpacity={0.85}
               onPress={() =>
                 navigation.navigate('GiftProductDetail', {
@@ -165,13 +208,7 @@ export function GiftShopByCategoryScreen() {
                 })
               }
             >
-              <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
-                {item.thumbnail ? (
-                  <Image source={{ uri: item.thumbnail }} style={styles.designImg} resizeMode="cover" />
-                ) : (
-                  <Gift size={48} color={t.placeholder} />
-                )}
-              </View>
+              <DesignImage item={item} placeholderColor={t.chipBg} iconColor={t.placeholder} />
               <TouchableOpacity style={[styles.startDesignBtn, { backgroundColor: t.textPrimary }]} activeOpacity={0.9}>
                 <Text style={[styles.startDesignText, { color: t.background }]} numberOfLines={1}>
                   {item.isPremium ? 'Explore Premium designs' : 'Start design'}
@@ -275,11 +312,9 @@ const styles = StyleSheet.create({
   },
   designCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E8EAF0',
     minHeight: 224,
     ...Platform.select({
       ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 10 },

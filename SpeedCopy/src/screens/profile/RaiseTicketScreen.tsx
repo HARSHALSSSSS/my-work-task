@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
+    fontSize: 21,
     lineHeight: 36,
     color: '#242424',
     textAlign: 'center',
@@ -231,13 +231,13 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
+    fontSize: 23,
     lineHeight: 30,
     color: '#000000',
   },
   heroSub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 22,
     color: '#6B6B6B',
   },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     color: '#000000',
     marginBottom: 8,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: '#000000',
     flex: 1,
   },
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: '#000000',
   },
   dropdownItemActive: {
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     minHeight: 120,
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    fontSize: 15,
     color: '#000000',
     borderWidth: 0.5,
     borderColor: '#E0E0E0',
@@ -328,12 +328,12 @@ const styles = StyleSheet.create({
   },
   addPhotoText: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B6B6B',
   },
   attachmentAdded: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
+    fontSize: 14,
     color: '#27AE60',
   },
   submitBtn: {
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   },
   submitBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 17,
     color: '#FFFFFF',
   },
 });

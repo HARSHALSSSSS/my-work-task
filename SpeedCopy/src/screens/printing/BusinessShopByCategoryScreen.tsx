@@ -17,7 +17,7 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import { PrintStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageCandidates, getProductImageUrl, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
 
@@ -29,6 +29,7 @@ type DesignProduct = {
   category: string;
   hasPremium: boolean;
   thumbnail?: string;
+  imageCandidates?: string[];
   price?: number;
   originalPrice?: number;
   discount?: string;
@@ -37,6 +38,43 @@ type DesignProduct = {
 type FilterMode = 'all' | 'premium' | 'budget';
 
 const FALLBACK_BANNER = require('../../../assets/images/print-cat-business.png');
+
+function BusinessProductImage({
+  item,
+  placeholderColor,
+  iconColor,
+}: {
+  item: DesignProduct;
+  placeholderColor: string;
+  iconColor: string;
+}) {
+  const candidates = React.useMemo(
+    () => (item.imageCandidates?.length ? item.imageCandidates : item.thumbnail ? [toAbsoluteAssetUrl(item.thumbnail)] : []),
+    [item.imageCandidates, item.thumbnail],
+  );
+  const [imageIndex, setImageIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [item.id, item.thumbnail, item.imageCandidates]);
+
+  const activeImage = candidates[imageIndex];
+
+  return (
+    <View style={[styles.productImageWrap, { backgroundColor: placeholderColor }]}>
+      {activeImage ? (
+        <Image
+          source={{ uri: activeImage }}
+          style={styles.productImage}
+          resizeMode="cover"
+          onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
+        />
+      ) : (
+        <FileText size={42} color={iconColor} />
+      )}
+    </View>
+  );
+}
 
 export const BusinessShopByCategoryScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -82,49 +120,54 @@ export const BusinessShopByCategoryScreen: React.FC = () => {
             : [];
 
           const items = sortProducts(dedupeProducts([...selectedItems, ...routeFallbackItems, ...rawItems]));
-          const mapped = (items || [])
-            .map((p: any) => {
-              const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-              return {
-                id: p._id || p.id,
-                name: p.name,
-                category: typeof p.category === 'object' ? p.category?.name : p.category || 'Business',
-                hasPremium: Boolean(p.isFeatured || p.is_featured || p.designType === 'premium'),
-                thumbnail: getProductImageUrl(p),
-                price,
-                originalPrice,
-                discount: discountLabel,
-              };
-            })
-            .filter((p: DesignProduct) => Boolean(p.id));
-
-          const uniqueProducts = dedupeProducts(mapped);
-          if (selectedProductId) {
-            const selectedOnly = uniqueProducts.filter((p: DesignProduct) => p.id === selectedProductId);
-            if (selectedOnly.length > 0) {
-              setProducts(selectedOnly);
-            } else if (selectedProductName || selectedProductImage) {
-              setProducts([
-                {
-                  id: selectedProductId,
-                  name: selectedProductName || 'Business Product',
-                  category: route.params?.category || 'Business',
-                  hasPremium: false,
-                  thumbnail: selectedProductImage,
-                  price: selectedProductPrice,
-                  originalPrice: selectedProductOriginalPrice,
-                  discount: selectedProductDiscount,
-                },
-              ]);
+          return Promise.all(items.map(async (p: any) => {
+            const productId = String(p?._id || p?.id || '').trim();
+            const detailProduct = productId ? await productsApi.getBusinessPrintProduct(productId).catch(() => null) : null;
+            const source = detailProduct || p;
+            const { price, originalPrice, discountLabel } = resolveProductPricing(source);
+            const imageCandidates = getProductImageCandidates(source);
+            return {
+              id: source._id || source.id || p._id || p.id,
+              name: source.name || p.name,
+              category: typeof source.category === 'object' ? source.category?.name : source.category || p.category || 'Business',
+              hasPremium: Boolean(source.isFeatured || source.is_featured || source.designType === 'premium' || p.isFeatured || p.is_featured),
+              thumbnail: imageCandidates[0] || getProductImageUrl(source) || getProductImageUrl(p),
+              imageCandidates,
+              price,
+              originalPrice,
+              discount: discountLabel,
+            };
+          })).then((mappedItems) => {
+            const mapped = mappedItems.filter((p: DesignProduct) => Boolean(p.id));
+            const uniqueProducts = dedupeProducts(mapped);
+            if (selectedProductId) {
+              const selectedOnly = uniqueProducts.filter((p: DesignProduct) => p.id === selectedProductId);
+              if (selectedOnly.length > 0) {
+                setProducts(selectedOnly);
+              } else if (selectedProductName || selectedProductImage) {
+                setProducts([
+                  {
+                    id: selectedProductId,
+                    name: selectedProductName || 'Business Product',
+                    category: route.params?.category || 'Business',
+                    hasPremium: false,
+                    thumbnail: selectedProductImage,
+                    imageCandidates: selectedProductImage ? [toAbsoluteAssetUrl(selectedProductImage)] : [],
+                    price: selectedProductPrice,
+                    originalPrice: selectedProductOriginalPrice,
+                    discount: selectedProductDiscount,
+                  },
+                ]);
+              } else {
+                setProducts([]);
+              }
             } else {
-              setProducts([]);
+              setProducts(uniqueProducts);
             }
-          } else {
-            setProducts(uniqueProducts);
-          }
+          });
 
-          if (typesRes?.length) {
-            const uniqueChips = Array.from(new Set(typesRes.map((x: any) => x.name || x).filter(Boolean)));
+          if ((typesRes || []).length) {
+            const uniqueChips = Array.from(new Set((typesRes || []).map((x: any) => x.name || x).filter(Boolean)));
             setFilterChips(['All', ...uniqueChips]);
           } else {
             setFilterChips(['All', 'Business', 'Marketing', 'Personal']);
@@ -268,9 +311,7 @@ export const BusinessShopByCategoryScreen: React.FC = () => {
           <View style={styles.productBlock}>
             {filtered.map((item) => (
               <View key={item.id} style={[styles.productCard, { backgroundColor: t.card, borderColor: t.divider }]}> 
-                <View style={[styles.productImageWrap, { backgroundColor: t.chipBg }]}> 
-                  {item.thumbnail ? <Image source={{ uri: item.thumbnail }} style={styles.productImage} resizeMode="cover" /> : <FileText size={42} color={t.iconDefault} />}
-                </View>
+                <BusinessProductImage item={item} placeholderColor={t.chipBg} iconColor={t.iconDefault} />
 
                 <View style={styles.productBody}>
                   <Text style={[styles.productName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>

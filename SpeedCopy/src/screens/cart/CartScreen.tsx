@@ -28,7 +28,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { CartItem } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { resolveProductPricing } from '../../utils/pricing';
-import { dedupeProducts, inferFlowTypeFromItemId, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageCandidates, getProductImageUrl, inferFlowTypeFromItemId, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { fetchCartStockMap, LiveStockState } from '../../utils/stock';
 import * as cartApi from '../../api/cart';
 import * as productsApi from '../../api/products';
@@ -54,6 +54,7 @@ type SuggestedProduct = {
   originalPrice?: number;
   discountLabel?: string;
   image?: string;
+  imageCandidates?: string[];
 };
 
 const SUGGESTION_LIMIT = 8;
@@ -121,7 +122,8 @@ function mapProductToSuggestion(product: any, fallbackFlow: SuggestionFlow): Sug
       ? incomingFlow
       : fallbackFlow;
   const { price, originalPrice, discountLabel } = resolveSuggestionPrice(product);
-  const image = toAbsoluteAssetUrl(product?.thumbnail || product?.images?.[0]);
+  const imageCandidates = getProductImageCandidates(product);
+  const image = imageCandidates[0] || getProductImageUrl(product);
 
   return {
     id,
@@ -131,7 +133,45 @@ function mapProductToSuggestion(product: any, fallbackFlow: SuggestionFlow): Sug
     originalPrice,
     discountLabel,
     image: image || undefined,
+    imageCandidates,
   };
+}
+
+function SuggestionImage({
+  product,
+  backgroundColor,
+  iconColor,
+}: {
+  product: SuggestedProduct;
+  backgroundColor: string;
+  iconColor: string;
+}) {
+  const candidates = React.useMemo(
+    () => (product.imageCandidates?.length ? product.imageCandidates : product.image ? [toAbsoluteAssetUrl(product.image)] : []),
+    [product.image, product.imageCandidates],
+  );
+  const [imageIndex, setImageIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [product.id, product.image, product.imageCandidates]);
+
+  const activeImage = candidates[imageIndex];
+
+  return (
+    <View style={[styles.suggestionImageWrap, { backgroundColor }]}>
+      {activeImage ? (
+        <Image
+          source={{ uri: activeImage }}
+          style={styles.suggestionImage}
+          resizeMode="cover"
+          onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
+        />
+      ) : (
+        <ShoppingBag size={24} color={iconColor} />
+      )}
+    </View>
+  );
 }
 
 export function CartScreen() {
@@ -624,13 +664,11 @@ export function CartScreen() {
                       onPress={() => onSuggestionPress(product)}
                       style={styles.suggestionTapArea}
                     >
-                      <View style={[styles.suggestionImageWrap, { backgroundColor: t.chipBg }]}>
-                        {product.image ? (
-                          <Image source={{ uri: toAbsoluteAssetUrl(product.image) }} style={styles.suggestionImage} resizeMode="cover" />
-                        ) : (
-                          <ShoppingBag size={24} color={t.iconDefault} />
-                        )}
-                      </View>
+                      <SuggestionImage
+                        product={product}
+                        backgroundColor={t.chipBg}
+                        iconColor={t.iconDefault}
+                      />
                       <View style={styles.suggestionBody}>
                         <Text style={[styles.suggestionName, { color: t.textPrimary }]} numberOfLines={2}>
                           {product.name}

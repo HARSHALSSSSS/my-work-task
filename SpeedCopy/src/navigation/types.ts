@@ -63,7 +63,7 @@ export type HomeTabStackParamList = {
     discount?: string;
   };
   ShopByCategory: undefined;
-  StationeryList: { category?: string };
+  StationeryList: { category?: string; categoryName?: string; bannerImage?: string };
   StationeryDetail: {
     productId: string;
     image?: string;

@@ -357,7 +357,7 @@ export function LoginScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.googleBtn, { borderColor: t.border }]}
+                style={[styles.googleBtn, { borderColor: t.border, backgroundColor: t.card }]}
                 onPress={handleGoogleSignIn}
                 activeOpacity={0.85}
                 disabled={googleLoading}
