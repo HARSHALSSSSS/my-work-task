@@ -263,10 +263,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scrollContent: {
-    paddingTop: Spacing.xs,
+    paddingTop: Spacing.xxs,
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   loadingBanner: {
     flexDirection: 'row',

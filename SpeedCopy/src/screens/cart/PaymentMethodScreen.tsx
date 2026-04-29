@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import {
   Building2,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   CreditCard,
   Lock,
   Shield,
@@ -134,6 +136,7 @@ export function PaymentMethodScreen() {
   const [rzpOptions, setRzpOptions] = useState<RazorpayOptions | null>(null);
   const [pendingOrder, setPendingOrder] = useState<ordersApi.BackendOrder | null>(null);
   const [walletCheckoutUnavailable, setWalletCheckoutUnavailable] = useState(false);
+  const [showSecurityDetails, setShowSecurityDetails] = useState(false);
   const userName = useAuthStore((s) => s.userName);
   const userEmail = useAuthStore((s) => s.userEmail);
   const userPhone = useAuthStore((s) => s.phone);
@@ -712,32 +715,42 @@ export function PaymentMethodScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Guarantee text */}
-        <Text style={[styles.guaranteeText, { color: t.placeholder }]}>GUARANTEED SAFE CHECKOUT</Text>
+        <TouchableOpacity
+          style={[styles.securityToggle, { borderColor: t.border, backgroundColor: t.card }]}
+          onPress={() => setShowSecurityDetails((prev) => !prev)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.securityToggleTitle, { color: t.textPrimary }]}>Security & policy details</Text>
+          {showSecurityDetails ? <ChevronUp size={18} color={t.textSecondary} /> : <ChevronDown size={18} color={t.textSecondary} />}
+        </TouchableOpacity>
 
-        {/* Trust badges */}
-        <View style={styles.badgeRow}>
-          {['SSL SECURED', 'PCI COMPLIANT', '256-BIT'].map((badge) => (
-            <View key={badge} style={[styles.badgePill, { backgroundColor: t.chipBg }]}>
-              <Shield size={10} color={t.textSecondary} />
-              <Text style={[styles.badgeText, { color: t.textSecondary }]}>{badge}</Text>
+        {showSecurityDetails ? (
+          <>
+            <Text style={[styles.guaranteeText, { color: t.placeholder }]}>GUARANTEED SAFE CHECKOUT</Text>
+
+            <View style={styles.badgeRow}>
+              {['SSL SECURED', 'PCI COMPLIANT', '256-BIT'].map((badge) => (
+                <View key={badge} style={[styles.badgePill, { backgroundColor: t.chipBg }]}>
+                  <Shield size={10} color={t.textSecondary} />
+                  <Text style={[styles.badgeText, { color: t.textSecondary }]}>{badge}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        {/* Free cancellation */}
-        <View style={[styles.cancelCard, shadow(), { backgroundColor: t.card }]}>
-          <View style={styles.cancelIconWrap}>
-            <Shield size={18} color="#0F766E" />
-          </View>
-          <View style={styles.cancelBody}>
-            <Text style={[styles.cancelTitle, { color: t.textPrimary }]}>Free cancellation policy</Text>
-            <Text style={[styles.cancelSub, { color: t.textSecondary }]}>
-              You can cancel your order within 10 minutes of placing it for a full refund.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+            <View style={[styles.cancelCard, shadow(), { backgroundColor: t.card }]}>
+              <View style={styles.cancelIconWrap}>
+                <Shield size={18} color="#0F766E" />
+              </View>
+              <View style={styles.cancelBody}>
+                <Text style={[styles.cancelTitle, { color: t.textPrimary }]}>Free cancellation policy</Text>
+                <Text style={[styles.cancelSub, { color: t.textSecondary }]}>
+                  You can cancel your order within 10 minutes of placing it for a full refund.
+                </Text>
+              </View>
+            </View>
+          </>
+        ) : null}
+
 
       <RazorpayCheckout
         visible={!!rzpOptions}
@@ -755,8 +768,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
     minHeight: 52,
     gap: 12,
   },
@@ -773,7 +786,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scroll: {
-    paddingTop: 8,
+    paddingTop: Spacing.xs,
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
@@ -798,25 +811,26 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
+    fontSize: 18,
+    lineHeight: 24,
     color: '#000',
-    marginTop: 4,
+    marginTop: Spacing.xxs,
   },
   mainSub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B6B6B',
-    marginBottom: 20,
-    marginTop: 4,
+    marginBottom: Spacing.md,
+    marginTop: Spacing.xxs,
   },
   methodCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    marginBottom: 10,
+    padding: 12,
+    gap: 10,
+    marginBottom: 8,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
@@ -864,9 +878,9 @@ const styles = StyleSheet.create({
   },
   upiExpanded: {
     borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-    marginTop: -4,
+    padding: 12,
+    marginBottom: 8,
+    marginTop: -2,
     borderWidth: 1,
   },
   upiAppRow: {
@@ -988,9 +1002,9 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
-    marginTop: 16,
-    marginBottom: 20,
+    padding: 14,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
   },
   summaryTitle: {
     fontFamily: 'Poppins_700Bold',
@@ -1060,29 +1074,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#0F766E',
     borderRadius: 12,
-    height: 54,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   payBtnText: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
+    fontSize: 15,
     color: '#FFFFFF',
+  },
+  securityToggle: {
+    borderWidth: 1,
+    borderRadius: 12,
+    minHeight: 40,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  securityToggleTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
   },
   guaranteeText: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 10,
     color: '#A5A5A5',
     textAlign: 'center',
-    letterSpacing: 1.5,
-    marginBottom: 10,
+    letterSpacing: 1.2,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
   badgeRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: Spacing.md,
     flexWrap: 'wrap',
   },
   badgePill: {
