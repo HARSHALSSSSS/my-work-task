@@ -20,7 +20,7 @@ export const SafeScreen: React.FC<SafeScreenProps> = ({
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]}>
-      <StatusBar barStyle={barStyle} backgroundColor={bg} />
+      <StatusBar barStyle={barStyle} backgroundColor={bg} animated />
       <View style={styles.inner}>{children}</View>
     </SafeAreaView>
   );

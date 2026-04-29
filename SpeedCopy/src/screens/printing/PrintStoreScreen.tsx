@@ -1,13 +1,20 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Platform, Image, ImageSourcePropType, ActivityIndicator,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  Image,
+  ImageSourcePropType,
+  ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Search, LayoutGrid } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
-import { scale } from '../../constants/theme';
 import { PrintStackParamList } from '../../navigation/types';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useThemeStore } from '../../store/useThemeStore';
@@ -15,27 +22,55 @@ import * as productsApi from '../../api/products';
 import { dedupeProducts, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { Radii, Spacing, Typography, scale } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'PrintStore'>;
 
 const IMG_BUSINESS_CARDS = require('../../../assets/images/print-business-cards.png');
+const IMG_PRINT_BANNER = require('../../../assets/images/print-cat-business.png');
+const IMG_PRINT_SECONDARY = require('../../../assets/images/print-cat-flyers.png');
 
 type Category = { id: string; label: string; image?: ImageSourcePropType };
+
 type PrintProduct = {
-  id: string; name: string; price: number; originalPrice?: number;
-  discount?: string; image: ImageSourcePropType; categoryKey?: string;
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  discount?: string;
+  image: ImageSourcePropType;
+  categoryKey?: string;
+  isPremium?: boolean;
 };
+
 type RecentItem = { id: string; name: string; image: ImageSourcePropType };
+
+type FilterKey = 'all' | 'popular' | 'premium' | 'budget';
+
+const FILTERS: Array<{ id: FilterKey; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'popular', label: 'Popular' },
+  { id: 'premium', label: 'Premium' },
+  { id: 'budget', label: 'Budget' },
+];
+
+function resolveCategoryFallbackImage(label: string): ImageSourcePropType {
+  const key = String(label || '').toLowerCase();
+  if (key.includes('flyer') || key.includes('brochure')) return IMG_PRINT_SECONDARY;
+  return IMG_PRINT_BANNER;
+}
 
 export const PrintStoreScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [activeCategory, setActiveCategory] = useState('all');
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const { colors: t } = useThemeStore();
   const setMode = useCategoryStore((s) => s.setMode);
   const [apiCategories, setApiCategories] = useState<Category[]>([]);
   const [apiProducts, setApiProducts] = useState<PrintProduct[]>([]);
   const [apiRecent, setApiRecent] = useState<RecentItem[]>([]);
-  const [bannerUri, setBannerUri] = useState<string | null>(null);
+  const [bannerUris, setBannerUris] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -43,93 +78,98 @@ export const PrintStoreScreen: React.FC = () => {
     setMode('printing');
   }, [setMode]);
 
-  useFocusEffect(useCallback(() => {
-    setLoading(true);
-    setLoadError(null);
-    Promise.all([
-      productsApi.getBusinessPrintingHome().catch(() => null),
-      productsApi.getBusinessPrintTypes().catch(() => []),
-      productsApi.getBusinessPrintProducts({ limit: 40 }).catch(() => null),
-      productsApi.getProducts({ flowType: 'printing', limit: 40 }).catch(() => null),
-    ])
-      .then(([home, printTypes, productRes, genericPrintRes]) => {
-        const categorySeen = new Set<string>();
-        const mappedTypes = (printTypes || [])
-          .map((x: any) => ({
-            id: String(x.slug || x._id || x.id || x.name || '').toLowerCase(),
-            label: x.name || x.label || 'Type',
-            image: x.image ? ({ uri: toAbsoluteAssetUrl(x.image) } as ImageSourcePropType) : undefined,
-          }))
-          .filter((x: Category) => {
-            const key = String(x.id || '');
-            if (!key || categorySeen.has(key)) return false;
-            categorySeen.add(key);
-            return true;
-          });
-        setApiCategories(mappedTypes.length ? [{ id: 'all', label: 'All' }, ...mappedTypes] : []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      setLoadError(null);
+      Promise.all([
+        productsApi.getBusinessPrintingHome().catch(() => null),
+        productsApi.getBusinessPrintTypes().catch(() => []),
+        productsApi.getBusinessPrintProducts({ limit: 40 }).catch(() => null),
+        productsApi.getProducts({ flowType: 'printing', limit: 40 }).catch(() => null),
+      ])
+        .then(([home, printTypes, productRes, genericPrintRes]) => {
+          const categorySeen = new Set<string>();
+          const mappedTypes = (printTypes || [])
+            .map((x: any) => ({
+              id: String(x.slug || x._id || x.id || x.name || '').toLowerCase(),
+              label: x.name || x.label || 'Type',
+              image: x.image
+                ? ({ uri: toAbsoluteAssetUrl(x.image) } as ImageSourcePropType)
+                : resolveCategoryFallbackImage(x.name || x.label || ''),
+            }))
+            .filter((x: Category) => {
+              const key = String(x.id || '');
+              if (!key || categorySeen.has(key)) return false;
+              categorySeen.add(key);
+              return true;
+            });
 
-        setBannerUri(null);
+          setApiCategories([{ id: 'all', label: 'All', image: IMG_PRINT_BANNER }, ...mappedTypes]);
 
-        const listItemsRaw: any[] = productRes?.products || productRes?.data || (Array.isArray(productRes) ? productRes : []);
-        const businessItems = sortProducts(dedupeProducts(listItemsRaw));
-        const genericResAny = genericPrintRes as any;
-        const genericRaw: any[] =
-          genericResAny?.products || genericResAny?.data?.products || genericResAny?.data || (Array.isArray(genericResAny) ? genericResAny : []);
-        const genericItems = sortProducts(
-          dedupeProducts(genericRaw).filter((p: any) => String(p?.flowType || '').toLowerCase() === 'printing'),
-        );
-        const featuredHome = sortProducts(dedupeProducts(home?.featured_products || []));
-        const displaySource = sortProducts(
-          dedupeProducts(businessItems.length > 0 ? [...featuredHome, ...businessItems] : [...featuredHome, ...genericItems]),
-        );
+          const homeBannerImages = (home?.banners || [])
+            .map((banner: any) => toAbsoluteAssetUrl(banner?.image))
+            .filter(Boolean);
+          setBannerUris(homeBannerImages.length ? homeBannerImages : [Image.resolveAssetSource(IMG_PRINT_BANNER).uri, Image.resolveAssetSource(IMG_PRINT_SECONDARY).uri]);
 
-        if (displaySource.length) {
+          const listItemsRaw: any[] = productRes?.products || productRes?.data || (Array.isArray(productRes) ? productRes : []);
+          const businessItems = sortProducts(dedupeProducts(listItemsRaw));
+
+          const genericResAny = genericPrintRes as any;
+          const genericRaw: any[] =
+            genericResAny?.products ||
+            genericResAny?.data?.products ||
+            genericResAny?.data ||
+            (Array.isArray(genericResAny) ? genericResAny : []);
+          const genericItems = sortProducts(
+            dedupeProducts(genericRaw).filter((p: any) => String(p?.flowType || '').toLowerCase() === 'printing'),
+          );
+
+          const featuredHome = sortProducts(dedupeProducts(home?.featured_products || []));
+          const displaySource = sortProducts(
+            dedupeProducts(businessItems.length > 0 ? [...featuredHome, ...businessItems] : [...featuredHome, ...genericItems]),
+          );
+
           const mapped = displaySource
             .map((p: any) => {
-            const thumb = p.thumbnail || p.images?.[0];
-            const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-            const rawCategory =
-              p.business_print_type ||
-              (typeof p.businessPrintType === 'object'
-                ? p.businessPrintType?.slug || p.businessPrintType?._id || p.businessPrintType?.name
-                : p.businessPrintType) ||
-              (typeof p.type === 'object' ? p.type?.slug || p.type?._id || p.type?.name : p.type);
-            return {
-              id: p._id || p.id,
-              name: p.name,
-              price,
-              originalPrice,
-              discount: discountLabel,
-              image: thumb ? { uri: toAbsoluteAssetUrl(thumb) } : IMG_BUSINESS_CARDS,
-              categoryKey: String(rawCategory || '').toLowerCase(),
-            };
-          })
-            .filter((p: PrintProduct) => Boolean(p.id));
-          const mappedUnique = dedupeProducts(mapped);
+              const thumb = p.thumbnail || p.images?.[0];
+              const { price, originalPrice, discountLabel } = resolveProductPricing(p);
+              const rawCategory =
+                p.business_print_type ||
+                (typeof p.businessPrintType === 'object'
+                  ? p.businessPrintType?.slug || p.businessPrintType?._id || p.businessPrintType?.name
+                  : p.businessPrintType) ||
+                (typeof p.type === 'object' ? p.type?.slug || p.type?._id || p.type?.name : p.type);
+              const isPremium = Boolean(p.isFeatured || p.is_featured || p.premium || p.designType === 'premium');
 
+              return {
+                id: p._id || p.id,
+                name: p.name,
+                price,
+                originalPrice,
+                discount: discountLabel,
+                image: thumb ? { uri: toAbsoluteAssetUrl(thumb) } : IMG_BUSINESS_CARDS,
+                categoryKey: String(rawCategory || '').toLowerCase(),
+                isPremium,
+              };
+            })
+            .filter((p: PrintProduct) => Boolean(p.id));
+
+          const mappedUnique = dedupeProducts(mapped);
           const usedIds = new Set<string>();
-          // Keep products as the primary section so newly added items are always visible.
-          const uniqueProducts = takeUniqueById(mappedUnique, usedIds, 20);
+          const uniqueProducts = takeUniqueById(mappedUnique, usedIds, 30);
           const recentPool = mappedUnique.map((m) => ({ id: m.id, name: m.name, image: m.image }));
           const uniqueRecent = takeUniqueById(recentPool, usedIds, 4);
 
           setApiProducts(uniqueProducts);
           setApiRecent(uniqueRecent);
-        } else {
-          setApiProducts([]);
-          setApiRecent([]);
-        }
-      })
-      .catch((e) => { setLoadError(e?.message || 'Could not load print store.'); })
-      .finally(() => setLoading(false));
-  }, []));
-
-  const displayCategories = apiCategories;
-  const displayProducts = activeCategory === 'all'
-    ? apiProducts
-    : apiProducts.filter((p) => p.categoryKey === activeCategory);
-  const displayRecent = apiRecent;
-  const hasAnyProducts = displayRecent.length > 0 || displayProducts.length > 0;
+        })
+        .catch((e) => {
+          setLoadError(e?.message || 'Could not load print store.');
+        })
+        .finally(() => setLoading(false));
+    }, []),
+  );
 
   const resolveImageUri = (img: any): string | undefined => {
     if (!img) return undefined;
@@ -154,20 +194,32 @@ export const PrintStoreScreen: React.FC = () => {
     [navigation],
   );
 
-  const onRecentPress = useCallback(
-    (item: RecentItem) => {
-      navigation.navigate('BusinessShopByCategory', {
-        productId: item.id,
-        image: resolveImageUri(item.image),
-        name: item.name,
-      });
-    },
-    [navigation],
-  );
+  const displayProducts = useMemo(() => {
+    const lowerQuery = searchQuery.trim().toLowerCase();
+    let list = activeCategory === 'all' ? apiProducts : apiProducts.filter((p) => p.categoryKey === activeCategory);
 
-  const onSearchPress = useCallback(() => {
-    navigation.navigate('BusinessShopByCategory', {});
-  }, [navigation]);
+    if (activeFilter === 'premium') {
+      list = list.filter((p) => p.isPremium || Boolean(p.discount));
+    } else if (activeFilter === 'budget') {
+      list = list.filter((p) => p.price <= 200);
+    } else if (activeFilter === 'popular') {
+      list = list.filter((p) => Boolean(p.discount) || Boolean(p.isPremium));
+    }
+
+    if (lowerQuery) {
+      list = list.filter((p) => p.name.toLowerCase().includes(lowerQuery));
+    }
+
+    return list;
+  }, [activeCategory, activeFilter, apiProducts, searchQuery]);
+
+  const displayRecent = useMemo(() => {
+    if (!searchQuery.trim()) return apiRecent;
+    return apiRecent.filter((item) => item.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+  }, [apiRecent, searchQuery]);
+
+  const hasAnyProducts = displayRecent.length > 0 || displayProducts.length > 0;
+  const heroBannerUri = bannerUris[0];
 
   return (
     <SafeScreen>
@@ -175,7 +227,7 @@ export const PrintStoreScreen: React.FC = () => {
         <View style={styles.headerSlot} />
         <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Print Store</Text>
         <TouchableOpacity style={[styles.gridBtn, { borderColor: t.border }]} activeOpacity={0.7}>
-          <LayoutGrid size={20} color={t.textPrimary} />
+          <LayoutGrid size={19} color={t.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -185,71 +237,79 @@ export const PrintStoreScreen: React.FC = () => {
         contentContainerStyle={styles.scroll}
         nestedScrollEnabled
       >
-        {/* Search */}
-        <View style={styles.searchRow}>
-          <TouchableOpacity style={[styles.searchBarTouchable, { borderBottomColor: t.searchBorder }]} activeOpacity={0.7} onPress={onSearchPress}>
-            <Search size={18} color={t.placeholder} />
-            <Text style={[styles.searchPlaceholder, { color: t.placeholder }]}>Search</Text>
-          </TouchableOpacity>
+        <View style={[styles.searchBar, { backgroundColor: t.card, borderColor: t.border }]}> 
+          <Search size={16} color={t.placeholder} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search business printing"
+            placeholderTextColor={t.placeholder}
+            style={[styles.searchInput, { color: t.textPrimary }]}
+          />
         </View>
 
-        {bannerUri ? (
+        {heroBannerUri ? (
           <View style={styles.bannerWrap}>
-            <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
+            <Image source={{ uri: heroBannerUri }} style={styles.bannerImage} resizeMode="cover" />
           </View>
         ) : null}
 
-        {loading && (
+        {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color={t.textPrimary} />
           </View>
-        )}
+        ) : null}
 
-        {!loading && loadError && (
+        {!loading && loadError ? (
           <View style={styles.emptyWrap}>
             <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>Couldn't load the print store</Text>
             <Text style={[styles.emptySub, { color: t.textSecondary }]}>{loadError}</Text>
           </View>
-        )}
+        ) : null}
 
-        {/* Categories */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryRow}
-          nestedScrollEnabled
-        >
-          {displayCategories.map((cat) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow} nestedScrollEnabled>
+          {apiCategories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={styles.categoryItem}
               onPress={() => setActiveCategory(cat.id)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <View style={[
-                styles.categoryCircle,
-                { backgroundColor: t.card, borderColor: t.border },
-                activeCategory === cat.id && [styles.categoryCircleActive, { borderColor: t.textPrimary }],
-              ]}>
-                {cat.image ? (
-                  <Image source={cat.image} style={styles.categoryImage} resizeMode="cover" />
-                ) : (
-                  <LayoutGrid size={20} color={t.textPrimary} />
-                )}
+              <View
+                style={[
+                  styles.categoryCircle,
+                  { backgroundColor: t.card, borderColor: activeCategory === cat.id ? t.textPrimary : t.border },
+                ]}
+              >
+                {cat.image ? <Image source={cat.image} style={styles.categoryImage} resizeMode="cover" /> : <LayoutGrid size={18} color={t.iconDefault} />}
               </View>
-              <Text style={[styles.categoryLabel, { color: t.textMuted }]}>{cat.label}</Text>
+              <Text style={[styles.categoryLabel, { color: t.textMuted }]} numberOfLines={2}>{cat.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* Recently Viewed */}
-        {displayRecent.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Recently Viewed</Text>}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} nestedScrollEnabled>
+          {FILTERS.map((filter) => {
+            const active = activeFilter === filter.id;
+            return (
+              <TouchableOpacity
+                key={filter.id}
+                style={[styles.filterChip, { borderColor: t.border, backgroundColor: active ? t.textPrimary : t.card }]}
+                onPress={() => setActiveFilter(filter.id)}
+              >
+                <Text style={[styles.filterText, { color: active ? t.background : t.textSecondary }]}>{filter.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {displayRecent.length > 0 ? <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Recently viewed</Text> : null}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentRow} nestedScrollEnabled>
           {displayRecent.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={[styles.recentCard, { backgroundColor: t.card, borderColor: t.divider }]}
-              onPress={() => onRecentPress(item)}
+              onPress={() => onProductPress(item)}
               activeOpacity={0.85}
             >
               <Image source={item.image} style={styles.recentImage} resizeMode="cover" />
@@ -257,45 +317,38 @@ export const PrintStoreScreen: React.FC = () => {
           ))}
         </ScrollView>
 
-        {/* New Arrivals */}
-        {displayProducts.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>New Arrivals</Text>}
-        {!loading && !loadError && !hasAnyProducts && (
+        {displayProducts.length > 0 ? <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Business printing products</Text> : null}
+        {!loading && !loadError && !hasAnyProducts ? (
           <View style={styles.emptyWrap}>
             <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No print products yet</Text>
-            <Text style={[styles.emptySub, { color: t.textSecondary }]}>Check back soon.</Text>
+            <Text style={[styles.emptySub, { color: t.textSecondary }]}>Try another filter or check again soon.</Text>
           </View>
-        )}
+        ) : null}
+
         <View style={styles.productsGrid}>
           {displayProducts.map((product) => (
             <TouchableOpacity
               key={product.id}
-              style={[styles.productCard, { backgroundColor: t.card }]}
-              onPress={() =>
-                onProductPress({
-                  id: product.id,
-                  name: product.name,
-                  price: product.price,
-                  originalPrice: product.originalPrice,
-                  image: product.image,
-                  discount: product.discount,
-                })
-              }
+              style={[styles.productCard, { backgroundColor: t.card, borderColor: t.divider }]}
+              onPress={() => onProductPress(product)}
               activeOpacity={0.85}
             >
               <Image source={product.image} style={styles.productImage} resizeMode="cover" />
               <View style={styles.productInfo}>
-                <Text style={[styles.productName, { color: t.textPrimary }]} numberOfLines={2}>{product.name}</Text>
+                <Text style={[styles.productName, { color: t.textPrimary }]} numberOfLines={2}>
+                  {product.name}
+                </Text>
                 <View style={styles.priceRow}>
                   <Text style={[styles.productPrice, { color: t.textPrimary }]}>{formatCurrency(product.price)}</Text>
-                  {product.originalPrice && (
+                  {product.originalPrice ? (
                     <Text style={[styles.productOriginal, { color: t.placeholder }]}>MRP {formatCurrency(product.originalPrice)}</Text>
-                  )}
-                  {product.discount && (
-                    <View style={[styles.discountBadge, { backgroundColor: t.badgeBg }]}>
-                      <Text style={styles.discountText}>{product.discount}</Text>
-                    </View>
-                  )}
+                  ) : null}
                 </View>
+                {product.discount ? (
+                  <View style={[styles.discountBadge, { backgroundColor: t.badgeBg }]}> 
+                    <Text style={styles.discountText}>{product.discount}</Text>
+                  </View>
+                ) : null}
               </View>
             </TouchableOpacity>
           ))}
@@ -310,155 +363,137 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
-    minHeight: 52,
-    gap: 12,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
+    minHeight: 48,
+    gap: Spacing.sm,
   },
   headerSlot: {
-    width: 40,
-    minHeight: 40,
+    width: 36,
+    minHeight: 36,
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
-    color: '#000',
+    ...Typography.title,
     flex: 1,
     textAlign: 'center',
   },
   gridBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   scroll: {
-    paddingTop: 8,
-    paddingHorizontal: 16,
+    paddingTop: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
-  searchRow: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: Radii.input,
+    paddingHorizontal: Spacing.md,
+    minHeight: 42,
+    gap: 8,
+    marginBottom: Spacing.md,
   },
-  searchBarTouchable: {
+  searchInput: {
+    ...Typography.body,
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingHorizontal: 2,
-    height: 44,
-    gap: 10,
-  },
-  searchPlaceholder: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-    color: '#A5A5A5',
+    paddingVertical: 0,
   },
   bannerWrap: {
-    borderRadius: 14,
+    borderRadius: Radii.section,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: Spacing.md,
   },
   bannerImage: {
     width: '100%',
-    height: scale(175),
-    borderRadius: 14,
+    height: scale(152),
   },
   categoryRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingRight: 4,
-    marginBottom: 24,
+    gap: Spacing.sm,
+    paddingRight: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   categoryItem: {
     alignItems: 'center',
-    gap: 8,
-    width: 85,
-    minHeight: 106,
+    gap: 6,
+    width: 78,
+    minHeight: 98,
   },
   categoryCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFFFFF',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#E0E0E0',
+    borderWidth: 1,
     overflow: 'hidden',
-  },
-  categoryCircleActive: {
-    borderColor: '#000',
-    borderWidth: 1.5,
   },
   categoryImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 36,
   },
   categoryLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
-    color: '#424242',
+    ...Typography.small,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 14,
+  },
+  filterRow: {
+    gap: 8,
+    marginBottom: Spacing.md,
+    paddingRight: 8,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  filterText: {
+    ...Typography.caption,
   },
   sectionTitle: {
+    ...Typography.subtitle,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 17,
-    color: '#000',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   recentRow: {
-    marginBottom: 24,
-    paddingRight: 4,
+    marginBottom: Spacing.md,
   },
   recentCard: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+    width: 86,
+    height: 86,
+    borderRadius: Radii.section,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E8EAF0',
     overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8 },
+      ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 7 },
       android: { elevation: 2 },
     }),
   },
   recentImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 14,
   },
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 10,
-    paddingBottom: 8,
   },
   productCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: Radii.section,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E8EAF0',
-    paddingBottom: 12,
+    paddingBottom: 10,
     ...Platform.select({
       ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 10 },
       android: { elevation: 3 },
@@ -466,54 +501,46 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: '100%',
-    height: scale(160),
-    backgroundColor: '#F6F6F6',
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: scale(135),
+    borderTopLeftRadius: Radii.section,
+    borderTopRightRadius: Radii.section,
   },
   productInfo: {
-    paddingHorizontal: 11,
-    paddingTop: 10,
+    paddingHorizontal: Spacing.sm,
+    paddingTop: Spacing.sm,
     gap: 4,
   },
   productName: {
+    ...Typography.caption,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12.5,
-    color: '#000',
-    lineHeight: 17,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     flexWrap: 'wrap',
-    marginTop: 1,
   },
   productPrice: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 14,
-    color: '#000',
+    ...Typography.bodyBold,
+    fontSize: 13,
   },
   productOriginal: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 10.5,
-    color: '#A5A5A5',
+    ...Typography.small,
     textDecorationLine: 'line-through',
   },
   discountBadge: {
-    backgroundColor: '#E8F8EE',
+    alignSelf: 'flex-start',
     borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   discountText: {
+    ...Typography.small,
+    color: Colors.green,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 9.5,
-    color: '#00A63E',
   },
-  loadingWrap: { paddingVertical: 40, alignItems: 'center' },
-  emptyWrap: { paddingVertical: 40, alignItems: 'center', gap: 6 },
-  emptyTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 16, color: '#000' },
-  emptySub: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#6B6B6B', textAlign: 'center' },
+  loadingWrap: { paddingVertical: 36, alignItems: 'center' },
+  emptyWrap: { paddingVertical: 36, alignItems: 'center', gap: 6 },
+  emptyTitle: { ...Typography.subtitle, fontFamily: 'Poppins_600SemiBold', textAlign: 'center' },
+  emptySub: { ...Typography.caption, textAlign: 'center' },
 });
-

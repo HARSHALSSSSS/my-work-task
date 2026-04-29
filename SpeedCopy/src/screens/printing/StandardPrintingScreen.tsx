@@ -1,11 +1,19 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Platform, ActivityIndicator, Alert,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, ChevronUp, ChevronDown, CloudUpload, Minus, Plus } from 'lucide-react-native';
+import { ChevronLeft, ChevronUp, ChevronDown, CloudUpload, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { SafeScreen } from '../../components/layout/SafeScreen';
@@ -14,11 +22,17 @@ import { useCartStore } from '../../store/useCartStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { CartItem, PrintConfig, PrintingSubService } from '../../types';
 import * as productsApi from '../../api/products';
+import { QuantityPicker } from '../../components/ui/QuantityPicker';
+import { Input } from '../../components/ui/Input';
+import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'StandardPrinting'>;
 type Route = RouteProp<PrintStackParamList, 'StandardPrinting'>;
 
-interface DropdownOption { label: string; value: string }
+interface DropdownOption {
+  label: string;
+  value: string;
+}
 
 type PricingState = {
   basePrice: number;
@@ -28,49 +42,55 @@ type PricingState = {
 
 const COLOR_MODES: DropdownOption[] = [
   { label: 'B&W', value: 'bw' },
-  { label: 'color', value: 'color' },
+  { label: 'Color', value: 'color' },
   { label: 'Custom', value: 'custom' },
 ];
+
 const PAGE_SIZES: DropdownOption[] = [
   { label: 'A4', value: 'A4' },
   { label: 'A3', value: 'A3' },
 ];
-const A4_ONLY_PAGE_SIZES: DropdownOption[] = [
-  { label: 'A4', value: 'A4' },
-];
+
+const A4_ONLY_PAGE_SIZES: DropdownOption[] = [{ label: 'A4', value: 'A4' }];
+
 const PRINT_SIDES: DropdownOption[] = [
-  { label: 'one-sided', value: 'one-sided' },
+  { label: 'One-sided', value: 'one-sided' },
   { label: 'Two-sided', value: 'two-sided' },
-  { label: '4 in 1 (2 front+2 back)', value: '4-in-1' },
+  { label: '4 in 1 (2 front + 2 back)', value: '4-in-1' },
 ];
+
 const PRINT_SIDES_NO_4IN1: DropdownOption[] = [
-  { label: 'one-sided', value: 'one-sided' },
+  { label: 'One-sided', value: 'one-sided' },
   { label: 'Two-sided', value: 'two-sided' },
 ];
-const THESIS_PRINT_SIDES: DropdownOption[] = [
-  { label: 'one-sided', value: 'one-sided' },
-];
+
+const THESIS_PRINT_SIDES: DropdownOption[] = [{ label: 'One-sided', value: 'one-sided' }];
+
 const PRINT_TYPES: DropdownOption[] = [
   { label: 'Loose paper', value: 'loose' },
   { label: 'Stapled', value: 'stapled' },
 ];
+
 const BINDING_COVERS: DropdownOption[] = [
   { label: 'Black & Gold', value: 'black-gold' },
   { label: 'Silver', value: 'silver' },
   { label: 'Silver with side strip', value: 'silver-strip' },
   { label: 'Black & Gold with side strip', value: 'black-gold-strip' },
 ];
+
 const CD_OPTIONS: DropdownOption[] = [
-  { label: 'Need', value: 'need' },
-  { label: 'No need', value: 'no-need' },
+  { label: 'Need CD', value: 'need' },
+  { label: 'No CD needed', value: 'no-need' },
 ];
+
 const COVER_PAGES: DropdownOption[] = [
   { label: 'Transparent Sheet', value: 'transparent' },
   { label: 'Blue Color Cover', value: 'blue' },
   { label: 'Pink Color Cover', value: 'pink' },
-  { label: 'Print 1st page of the PDF on a blue cover page', value: 'blue-print' },
-  { label: 'Print 1st page of the PDF on a pink cover page', value: 'pink-print' },
+  { label: 'Print 1st page on blue cover', value: 'blue-print' },
+  { label: 'Print 1st page on pink cover', value: 'pink-print' },
 ];
+
 type BackendPrintType = 'standard_printing' | 'spiral_binding' | 'soft_binding' | 'thesis_binding';
 
 const PRINT_TYPE_BY_SUB_SERVICE: Record<PrintingSubService, BackendPrintType> = {
@@ -159,66 +179,68 @@ function resolvePricing(payload: any): PricingState | null {
   };
 }
 
+function isImageLikeFile(name?: string, uri?: string) {
+  const source = `${name || ''} ${uri || ''}`.toLowerCase();
+  return ['.png', '.jpg', '.jpeg', '.webp'].some((ext) => source.includes(ext));
+}
+
+function formatPreviewName(fileName?: string) {
+  if (!fileName) return 'File ready for print';
+  if (fileName.length <= 35) return fileName;
+  return `${fileName.slice(0, 16)}…${fileName.slice(-14)}`;
+}
+
 function DropdownSelector({
-  label, options, selected, onSelect, isOpen, onToggle,
+  label,
+  options,
+  selected,
+  onSelect,
+  isOpen,
+  onToggle,
 }: {
-  label: string; options: DropdownOption[];
-  selected: string; onSelect: (v: string) => void;
-  isOpen: boolean; onToggle: () => void;
+  label: string;
+  options: DropdownOption[];
+  selected: string;
+  onSelect: (v: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
   const { colors: t } = useThemeStore();
   const selectedOpt = options.find((o) => o.value === selected);
+
   return (
     <View style={styles.dropdownSection}>
-      <Text style={[styles.dropdownLabel, { color: t.textPrimary }]}>{label}</Text>
-      <TouchableOpacity style={[styles.dropdownTrigger, { borderBottomColor: t.border }]} onPress={onToggle} activeOpacity={0.8}>
-        <Text style={[styles.dropdownTriggerText, { color: t.placeholder }, selectedOpt && [styles.dropdownTriggerSelected, { color: t.textMuted }]]}>
-          {selectedOpt ? selectedOpt.label : 'Select Input'}
+      <Text style={[styles.dropdownLabel, { color: t.textSecondary }]}>{label}</Text>
+      <TouchableOpacity
+        style={[styles.dropdownTrigger, { borderColor: t.border, backgroundColor: t.card }]}
+        onPress={onToggle}
+        activeOpacity={0.85}
+      >
+        <Text style={[styles.dropdownTriggerText, { color: selectedOpt ? t.textPrimary : t.placeholder }]}>
+          {selectedOpt ? selectedOpt.label : 'Select option'}
         </Text>
         {isOpen ? <ChevronUp size={18} color={t.textSecondary} /> : <ChevronDown size={18} color={t.textSecondary} />}
       </TouchableOpacity>
-      {isOpen && (
-        <View style={styles.optionsList}>
+
+      {isOpen ? (
+        <View style={[styles.optionsList, { borderColor: t.border, backgroundColor: t.card }]}> 
           {options.map((opt) => {
             const active = opt.value === selected;
             return (
               <TouchableOpacity
                 key={opt.value}
-                style={styles.optionItem}
-                onPress={() => { onSelect(opt.value); onToggle(); }}
+                style={[styles.optionItem, { borderBottomColor: t.divider }]}
+                onPress={() => {
+                  onSelect(opt.value);
+                  onToggle();
+                }}
               >
-                <Text style={[styles.optionText, { color: t.textMuted }, active && [styles.optionTextActive, { color: t.textPrimary }]]}>
-                  {opt.label}
-                </Text>
+                <Text style={[styles.optionText, { color: active ? t.textPrimary : t.textMuted }]}>{opt.label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
-      )}
-    </View>
-  );
-}
-
-function CounterRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  const { colors: t } = useThemeStore();
-  return (
-    <View style={styles.counterRow}>
-      <Text style={[styles.counterLabel, { color: t.textPrimary }]}>{label}</Text>
-      <View style={styles.counterControls}>
-        <TouchableOpacity
-          style={[styles.counterBtn, styles.counterBtnMinus]}
-          onPress={() => onChange(Math.max(0, value - 1))}
-        >
-          <Minus size={14} color="#fff" />
-        </TouchableOpacity>
-        <Text style={[styles.counterValue, { color: t.textPrimary }]}>{String(value).padStart(2, '0')}</Text>
-        <TouchableOpacity
-          style={[styles.counterBtn, styles.counterBtnPlus]}
-          onPress={() => onChange(value + 1)}
-        >
-          <Plus size={14} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -247,77 +269,92 @@ export const StandardPrintingScreen: React.FC = () => {
   const [pageSize, setPageSize] = useState('A4');
   const [printSide, setPrintSide] = useState('one-sided');
   const [printType, setPrintType] = useState('loose');
-  const [bindingCover, setBindingCover] = useState('');
-  const [cdOption, setCdOption] = useState('');
-  const [coverPage, setCoverPage] = useState('');
+  const [bindingCover, setBindingCover] = useState('black-gold');
+  const [cdOption, setCdOption] = useState('no-need');
+  const [coverPage, setCoverPage] = useState('transparent');
   const [copies, setCopies] = useState(1);
   const [linearGraph, setLinearGraph] = useState(0);
   const [semiLogGraph, setSemiLogGraph] = useState(0);
   const [instructions, setInstructions] = useState('');
+  const [customColorDescription, setCustomColorDescription] = useState('');
+  const [thesisSpineText, setThesisSpineText] = useState('');
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const showThesisSpineText = subService === 'thesis' && bindingCover.includes('strip');
+  const previewUri = uploadedFile?.url || fileUri;
+  const isImagePreview = isImageLikeFile(fileName || uploadedFile?.name, previewUri);
+  const serviceTitle = `${subService.charAt(0).toUpperCase()}${subService.slice(1)} Printing`;
 
   const toggleDropdown = useCallback((key: string) => {
     setOpenDropdown((prev) => (prev === key ? null : key));
   }, []);
 
-  const buildConfigPayload = useCallback((file?: productsApi.UploadedFile | null, priceOnly = false) => {
-    const printSideValue = PRINT_SIDE_MAP[printSide] || 'one_sided';
-    const basePayload: Record<string, any> = {
-      printType: backendPrintType,
-      files: file?.url
-        ? [{
-          originalName: file.name || fileName || 'uploaded-file',
-          url: file.url,
-          publicId: file._id || undefined,
-          size: file.size,
-          pages: file.pageCount,
-          mimeType: file.mimeType,
-        }]
-        : [],
+  const buildConfigPayload = useCallback(
+    (file?: productsApi.UploadedFile | null, priceOnly = false) => {
+      const printSideValue = PRINT_SIDE_MAP[printSide] || 'one_sided';
+      const basePayload: Record<string, any> = {
+        printType: backendPrintType,
+        files: file?.url
+          ? [{
+            originalName: file.name || fileName || 'uploaded-file',
+            url: file.url,
+            publicId: file._id || undefined,
+            size: file.size,
+            pages: file.pageCount,
+            mimeType: file.mimeType,
+          }]
+          : [],
+        colorMode,
+        colorModeNotes: colorMode === 'custom' ? customColorDescription.trim() : undefined,
+        pageSize: String(pageSize || 'A4').toLowerCase(),
+        printSide: printSideValue,
+        copies,
+        linearGraphSheets: linearGraph,
+        semiLogGraphSheets: semiLogGraph,
+        specialInstructions: instructions.trim(),
+        deliveryMethod: deliveryMode,
+        servicePackage: deliveryMode === 'delivery' ? selectedServicePackage : '',
+        shopId: deliveryMode === 'pickup' ? locationId : undefined,
+        priceOnly,
+      };
+
+      if (backendPrintType === 'standard_printing') {
+        basePayload.printOutputType = OUTPUT_TYPE_MAP[printType] || 'loose_paper';
+      }
+      if (backendPrintType === 'soft_binding' || backendPrintType === 'spiral_binding') {
+        basePayload.coverPage = COVER_PAGE_MAP[coverPage] || 'transparent_sheet';
+      }
+      if (backendPrintType === 'thesis_binding') {
+        basePayload.bindingCover = BINDING_COVER_MAP[bindingCover] || 'black_gold';
+        basePayload.cdRequired = cdOption === 'need' ? 'need' : 'no_need';
+        basePayload.thesisSpineText = showThesisSpineText ? thesisSpineText.trim() : undefined;
+      }
+
+      return basePayload;
+    },
+    [
+      backendPrintType,
+      bindingCover,
+      cdOption,
       colorMode,
-      pageSize: String(pageSize || 'A4').toLowerCase(),
-      printSide: printSideValue,
       copies,
-      linearGraphSheets: linearGraph,
-      semiLogGraphSheets: semiLogGraph,
-      specialInstructions: instructions.trim(),
-      deliveryMethod: deliveryMode,
-      servicePackage: deliveryMode === 'delivery' ? selectedServicePackage : '',
-      shopId: deliveryMode === 'pickup' ? locationId : undefined,
-      priceOnly,
-    };
-
-    if (backendPrintType === 'standard_printing') {
-      basePayload.printOutputType = OUTPUT_TYPE_MAP[printType] || 'loose_paper';
-    }
-    if (backendPrintType === 'soft_binding') {
-      basePayload.coverPage = COVER_PAGE_MAP[coverPage] || 'transparent_sheet';
-    }
-    if (backendPrintType === 'thesis_binding') {
-      basePayload.bindingCover = BINDING_COVER_MAP[bindingCover] || 'black_gold';
-      basePayload.cdRequired = cdOption === 'need' ? 'need' : 'no_need';
-    }
-
-    return basePayload;
-  }, [
-    backendPrintType,
-    bindingCover,
-    cdOption,
-    colorMode,
-    copies,
-    coverPage,
-    deliveryMode,
-    fileName,
-    instructions,
-    linearGraph,
-    locationId,
-    pageSize,
-    printSide,
-    printType,
-    selectedServicePackage,
-    semiLogGraph,
-  ]);
+      coverPage,
+      customColorDescription,
+      deliveryMode,
+      fileName,
+      instructions,
+      linearGraph,
+      locationId,
+      pageSize,
+      printSide,
+      printType,
+      selectedServicePackage,
+      semiLogGraph,
+      showThesisSpineText,
+      thesisSpineText,
+    ],
+  );
 
   const pickFile = useCallback(async () => {
     try {
@@ -333,22 +370,17 @@ export const StandardPrintingScreen: React.FC = () => {
         copyToCacheDirectory: true,
       });
       if (result.canceled) return;
+
       const asset = result.assets?.[0];
       if (!asset) return;
-      console.log('[upload] picked asset', {
-        name: asset.name,
-        uri: asset.uri,
-        mimeType: asset.mimeType,
-        size: asset.size,
-      });
       if (!isSupportedUpload(asset.name, asset.mimeType)) {
         Alert.alert('Unsupported file', 'Please upload PDF, DOC, DOCX, JPG, or PNG only.');
         return;
       }
+
       let resolvedUri = asset.uri;
       if (resolvedUri.startsWith('content://')) {
         const safeName = String(asset.name || 'upload')
-          .replace(/[^ -]/g, '')
           .replace(/[^\w.\-]/g, '_')
           .replace(/_+/g, '_');
         const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
@@ -360,7 +392,7 @@ export const StandardPrintingScreen: React.FC = () => {
           resolvedUri = target;
         }
       }
-      console.log('[upload] resolved uri', resolvedUri);
+
       setFileUri(resolvedUri);
       setFileName(asset.name ?? 'Selected file');
       setFileMime(asset.mimeType || undefined);
@@ -380,7 +412,9 @@ export const StandardPrintingScreen: React.FC = () => {
       } finally {
         setUploading(false);
       }
-    } catch { /* noop */ }
+    } catch {
+      setUploading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -388,8 +422,11 @@ export const StandardPrintingScreen: React.FC = () => {
     if (!uploadedFile?.url) {
       setPricing(null);
       setPricingLoading(false);
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
+
     setPricingLoading(true);
     const body = buildConfigPayload(uploadedFile, true);
     productsApi
@@ -398,13 +435,37 @@ export const StandardPrintingScreen: React.FC = () => {
         if (cancelled) return;
         setPricing(resolvePricing(res));
       })
-      .catch(() => { if (!cancelled) setPricing(null); })
-      .finally(() => { if (!cancelled) setPricingLoading(false); });
-    return () => { cancelled = true; };
+      .catch(() => {
+        if (!cancelled) setPricing(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPricingLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [buildConfigPayload, uploadedFile]);
 
+  const validateBeforeSubmit = () => {
+    if (!uploadedFile?.url) {
+      Alert.alert('File required', 'Please upload your document before adding this print job.');
+      return false;
+    }
+    if (colorMode === 'custom' && !customColorDescription.trim()) {
+      Alert.alert('Custom request needed', 'Please add custom color requirements.');
+      return false;
+    }
+    if (showThesisSpineText && !thesisSpineText.trim()) {
+      Alert.alert('Strip text required', 'Please enter side-strip text for this thesis cover option.');
+      return false;
+    }
+    return true;
+  };
+
   const handleAddToCart = useCallback(async () => {
-    if (submitting) return;
+    if (submitting || !validateBeforeSubmit()) return;
+
     setSubmitting(true);
     try {
       let finalUploaded = uploadedFile;
@@ -424,8 +485,8 @@ export const StandardPrintingScreen: React.FC = () => {
       }
 
       const configBody = buildConfigPayload(finalUploaded, false);
-
       let saved: any = null;
+
       try {
         saved = await productsApi.savePrintConfig(configBody);
       } catch (e: any) {
@@ -433,14 +494,13 @@ export const StandardPrintingScreen: React.FC = () => {
         return;
       }
 
-      const resolvedPricing = resolvePricing(saved);
-      const serverTotal = resolvedPricing?.total ?? pricing?.total;
+      const resolved = resolvePricing(saved);
+      const serverTotal = resolved?.total ?? pricing?.total;
       if (serverTotal === null || serverTotal === undefined) {
         Alert.alert('Pricing unavailable', 'We could not fetch the price from the server. Please retry.');
         return;
       }
 
-      const id = `print-${subService}-${Date.now()}`;
       const printConfig: PrintConfig = {
         serviceType: subService,
         deliveryMethod: deliveryMode,
@@ -452,27 +512,65 @@ export const StandardPrintingScreen: React.FC = () => {
         printType: printType as PrintConfig['printType'],
         copies,
         addons: { linearGraph, semiLogGraph },
-        specialInstructions: instructions.trim(),
+        specialInstructions: [
+          instructions.trim(),
+          colorMode === 'custom' && customColorDescription.trim() ? `Custom: ${customColorDescription.trim()}` : '',
+          showThesisSpineText && thesisSpineText.trim() ? `Thesis strip: ${thesisSpineText.trim()}` : '',
+        ]
+          .filter(Boolean)
+          .join(' | '),
         fileUri,
-        fileName: finalUploaded?.name || fileName,
+        fileName: finalUploaded.name || fileName,
       };
 
       const item: CartItem = {
-        id,
+        id: `print-${subService}-${Date.now()}`,
         type: 'printing',
         quantity: 1,
         price: serverTotal,
-        name: `${pageSize} Print \u2014 ${colorMode === 'bw' ? 'B&W' : 'Color'}`,
+        name: `${serviceTitle} - ${pageSize} (${colorMode === 'bw' ? 'B&W' : colorMode === 'color' ? 'Color' : 'Custom'})`,
         printConfig,
         printConfigId: saved?._id || saved?.configId,
-        image: finalUploaded?.url,
+        image: finalUploaded.url,
       };
+
       addItem(item);
-      navigation.goBack();
+      const parent = navigation.getParent();
+      if (parent) {
+        (parent as any).navigate('CartTab', { screen: 'Cart' });
+      } else {
+        navigation.goBack();
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [addItem, buildConfigPayload, colorMode, copies, deliveryMode, fileMime, fileName, fileUri, linearGraph, locationId, navigation, pageSize, pricing, printSide, printType, selectedServicePackage, semiLogGraph, subService, submitting, uploadedFile]);
+  }, [
+    addItem,
+    bindingCover,
+    buildConfigPayload,
+    colorMode,
+    copies,
+    customColorDescription,
+    deliveryMode,
+    fileMime,
+    fileName,
+    fileUri,
+    linearGraph,
+    locationId,
+    navigation,
+    pageSize,
+    pricing?.total,
+    printSide,
+    printType,
+    selectedServicePackage,
+    semiLogGraph,
+    serviceTitle,
+    showThesisSpineText,
+    subService,
+    submitting,
+    thesisSpineText,
+    uploadedFile,
+  ]);
 
   const renderDropdowns = () => {
     switch (subService) {
@@ -480,29 +578,44 @@ export const StandardPrintingScreen: React.FC = () => {
         return (
           <>
             <DropdownSelector
-              label="Color Mode" options={COLOR_MODES}
-              selected={colorMode} onSelect={setColorMode}
-              isOpen={openDropdown === 'color'} onToggle={() => toggleDropdown('color')}
+              label="Color Mode"
+              options={COLOR_MODES}
+              selected={colorMode}
+              onSelect={setColorMode}
+              isOpen={openDropdown === 'color'}
+              onToggle={() => toggleDropdown('color')}
             />
             <DropdownSelector
-              label="Print Side" options={THESIS_PRINT_SIDES}
-              selected={printSide} onSelect={setPrintSide}
-              isOpen={openDropdown === 'side'} onToggle={() => toggleDropdown('side')}
+              label="Print Side"
+              options={THESIS_PRINT_SIDES}
+              selected={printSide}
+              onSelect={setPrintSide}
+              isOpen={openDropdown === 'side'}
+              onToggle={() => toggleDropdown('side')}
             />
             <DropdownSelector
-              label="Page size" options={A4_ONLY_PAGE_SIZES}
-              selected={pageSize} onSelect={setPageSize}
-              isOpen={openDropdown === 'page'} onToggle={() => toggleDropdown('page')}
+              label="Page Size"
+              options={A4_ONLY_PAGE_SIZES}
+              selected={pageSize}
+              onSelect={setPageSize}
+              isOpen={openDropdown === 'page'}
+              onToggle={() => toggleDropdown('page')}
             />
             <DropdownSelector
-              label="Binding Cover" options={BINDING_COVERS}
-              selected={bindingCover} onSelect={setBindingCover}
-              isOpen={openDropdown === 'binding'} onToggle={() => toggleDropdown('binding')}
+              label="Binding Cover"
+              options={BINDING_COVERS}
+              selected={bindingCover}
+              onSelect={setBindingCover}
+              isOpen={openDropdown === 'binding'}
+              onToggle={() => toggleDropdown('binding')}
             />
             <DropdownSelector
-              label="CD" options={CD_OPTIONS}
-              selected={cdOption} onSelect={setCdOption}
-              isOpen={openDropdown === 'cd'} onToggle={() => toggleDropdown('cd')}
+              label="CD"
+              options={CD_OPTIONS}
+              selected={cdOption}
+              onSelect={setCdOption}
+              isOpen={openDropdown === 'cd'}
+              onToggle={() => toggleDropdown('cd')}
             />
           </>
         );
@@ -510,24 +623,36 @@ export const StandardPrintingScreen: React.FC = () => {
         return (
           <>
             <DropdownSelector
-              label="Color Mode" options={COLOR_MODES}
-              selected={colorMode} onSelect={setColorMode}
-              isOpen={openDropdown === 'color'} onToggle={() => toggleDropdown('color')}
+              label="Color Mode"
+              options={COLOR_MODES}
+              selected={colorMode}
+              onSelect={setColorMode}
+              isOpen={openDropdown === 'color'}
+              onToggle={() => toggleDropdown('color')}
             />
             <DropdownSelector
-              label="Page size" options={A4_ONLY_PAGE_SIZES}
-              selected={pageSize} onSelect={setPageSize}
-              isOpen={openDropdown === 'page'} onToggle={() => toggleDropdown('page')}
+              label="Page Size"
+              options={A4_ONLY_PAGE_SIZES}
+              selected={pageSize}
+              onSelect={setPageSize}
+              isOpen={openDropdown === 'page'}
+              onToggle={() => toggleDropdown('page')}
             />
             <DropdownSelector
-              label="Print Side" options={PRINT_SIDES_NO_4IN1}
-              selected={printSide} onSelect={setPrintSide}
-              isOpen={openDropdown === 'side'} onToggle={() => toggleDropdown('side')}
+              label="Print Side"
+              options={PRINT_SIDES_NO_4IN1}
+              selected={printSide}
+              onSelect={setPrintSide}
+              isOpen={openDropdown === 'side'}
+              onToggle={() => toggleDropdown('side')}
             />
             <DropdownSelector
-              label="Cover Page" options={COVER_PAGES}
-              selected={coverPage} onSelect={setCoverPage}
-              isOpen={openDropdown === 'coverPage'} onToggle={() => toggleDropdown('coverPage')}
+              label="Cover Page"
+              options={COVER_PAGES}
+              selected={coverPage}
+              onSelect={setCoverPage}
+              isOpen={openDropdown === 'coverPage'}
+              onToggle={() => toggleDropdown('coverPage')}
             />
           </>
         );
@@ -535,24 +660,36 @@ export const StandardPrintingScreen: React.FC = () => {
         return (
           <>
             <DropdownSelector
-              label="Color Mode" options={COLOR_MODES}
-              selected={colorMode} onSelect={setColorMode}
-              isOpen={openDropdown === 'color'} onToggle={() => toggleDropdown('color')}
+              label="Color Mode"
+              options={COLOR_MODES}
+              selected={colorMode}
+              onSelect={setColorMode}
+              isOpen={openDropdown === 'color'}
+              onToggle={() => toggleDropdown('color')}
             />
             <DropdownSelector
-              label="Page size" options={A4_ONLY_PAGE_SIZES}
-              selected={pageSize} onSelect={setPageSize}
-              isOpen={openDropdown === 'page'} onToggle={() => toggleDropdown('page')}
+              label="Page Size"
+              options={A4_ONLY_PAGE_SIZES}
+              selected={pageSize}
+              onSelect={setPageSize}
+              isOpen={openDropdown === 'page'}
+              onToggle={() => toggleDropdown('page')}
             />
             <DropdownSelector
-              label="Print Side" options={PRINT_SIDES}
-              selected={printSide} onSelect={setPrintSide}
-              isOpen={openDropdown === 'side'} onToggle={() => toggleDropdown('side')}
+              label="Print Side"
+              options={PRINT_SIDES}
+              selected={printSide}
+              onSelect={setPrintSide}
+              isOpen={openDropdown === 'side'}
+              onToggle={() => toggleDropdown('side')}
             />
             <DropdownSelector
-              label="Cover Page" options={COVER_PAGES}
-              selected={coverPage} onSelect={setCoverPage}
-              isOpen={openDropdown === 'coverPage'} onToggle={() => toggleDropdown('coverPage')}
+              label="Cover Page"
+              options={COVER_PAGES}
+              selected={coverPage}
+              onSelect={setCoverPage}
+              isOpen={openDropdown === 'coverPage'}
+              onToggle={() => toggleDropdown('coverPage')}
             />
           </>
         );
@@ -560,78 +697,135 @@ export const StandardPrintingScreen: React.FC = () => {
         return (
           <>
             <DropdownSelector
-              label="Color Mode" options={COLOR_MODES}
-              selected={colorMode} onSelect={setColorMode}
-              isOpen={openDropdown === 'color'} onToggle={() => toggleDropdown('color')}
+              label="Color Mode"
+              options={COLOR_MODES}
+              selected={colorMode}
+              onSelect={setColorMode}
+              isOpen={openDropdown === 'color'}
+              onToggle={() => toggleDropdown('color')}
             />
             <DropdownSelector
-              label="Page size" options={PAGE_SIZES}
-              selected={pageSize} onSelect={setPageSize}
-              isOpen={openDropdown === 'page'} onToggle={() => toggleDropdown('page')}
+              label="Page Size"
+              options={PAGE_SIZES}
+              selected={pageSize}
+              onSelect={setPageSize}
+              isOpen={openDropdown === 'page'}
+              onToggle={() => toggleDropdown('page')}
             />
             <DropdownSelector
-              label="Print Side" options={PRINT_SIDES}
-              selected={printSide} onSelect={setPrintSide}
-              isOpen={openDropdown === 'side'} onToggle={() => toggleDropdown('side')}
+              label="Print Side"
+              options={PRINT_SIDES}
+              selected={printSide}
+              onSelect={setPrintSide}
+              isOpen={openDropdown === 'side'}
+              onToggle={() => toggleDropdown('side')}
             />
             <DropdownSelector
-              label="Print Type" options={PRINT_TYPES}
-              selected={printType} onSelect={setPrintType}
-              isOpen={openDropdown === 'type'} onToggle={() => toggleDropdown('type')}
+              label="Print Type"
+              options={PRINT_TYPES}
+              selected={printType}
+              onSelect={setPrintType}
+              isOpen={openDropdown === 'type'}
+              onToggle={() => toggleDropdown('type')}
             />
           </>
         );
     }
   };
 
+  const pricingLabel = useMemo(() => {
+    if (!pricing) return '--';
+    return `₹${pricing.total}`;
+  }, [pricing]);
+
   return (
     <SafeScreen>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <ChevronLeft size={24} color={t.textPrimary} />
+          <ChevronLeft size={22} color={t.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Printing</Text>
-        <View style={{ width: 24 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
-        <Text style={[styles.heading, { color: t.textPrimary }]}>Print your documents</Text>
-        <Text style={[styles.subheading, { color: t.textSecondary }]}>Select your document or image to get started</Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scroll}
+      >
+        <Text style={[styles.heading, { color: t.textPrimary }]}>{serviceTitle}</Text>
+        <Text style={[styles.subheading, { color: t.textSecondary }]}>Upload your file, configure options and proceed to cart.</Text>
 
-        {/* File Upload */}
-        <TouchableOpacity style={styles.uploadBox} onPress={pickFile} activeOpacity={0.85} disabled={uploading}>
-          <View style={[styles.uploadIconCircle, { backgroundColor: t.chipBg }]}>
-            {uploading ? <ActivityIndicator color={t.textSecondary} /> : <CloudUpload size={28} color={t.textSecondary} />}
+        <TouchableOpacity
+          style={[styles.uploadBox, { borderColor: t.border, backgroundColor: t.card }]}
+          onPress={pickFile}
+          activeOpacity={0.85}
+          disabled={uploading}
+        >
+          <View style={[styles.uploadIconCircle, { backgroundColor: t.chipBg }]}> 
+            {uploading ? <ActivityIndicator color={t.textPrimary} /> : <CloudUpload size={22} color={t.textSecondary} />}
           </View>
-          <Text style={[styles.uploadTitle, { color: t.textPrimary }]}>Select Files</Text>
+          <Text style={[styles.uploadTitle, { color: t.textPrimary }]}>{uploading ? 'Uploading…' : 'Upload document'}</Text>
           <Text style={[styles.uploadSub, { color: t.textSecondary }]}>
-            {uploading ? 'Uploading to server\u2026' : uploadedFile ? `Uploaded${uploadedFile.pageCount ? ` \u2022 ${uploadedFile.pageCount} pages` : ''}` : 'Tap to browse PDF or image from the device'}
+            {uploadedFile?.url
+              ? `Uploaded${uploadedFile.pageCount ? ` • ${uploadedFile.pageCount} pages` : ''}`
+              : 'Supports PDF, DOC, DOCX, JPG and PNG'}
           </Text>
           <View style={[styles.chooseFileBtn, { backgroundColor: t.textPrimary }]}>
-            <Text style={[styles.chooseFileText, { color: t.background }]}>{fileName || 'Choose File'}</Text>
+            <Text style={[styles.chooseFileText, { color: t.background }]} numberOfLines={1}>
+              {fileName || 'Choose file'}
+            </Text>
           </View>
         </TouchableOpacity>
 
-        {/* Dropdowns \u2014 order varies by sub-service */}
+        {previewUri ? (
+          <View style={[styles.previewBlock, { borderColor: t.border, backgroundColor: t.card }]}> 
+            <Text style={[styles.previewTitle, { color: t.textPrimary }]}>Preview</Text>
+            <View style={[styles.previewBody, { backgroundColor: t.chipBg }]}> 
+              {isImagePreview ? (
+                <Image source={{ uri: previewUri }} resizeMode="cover" style={styles.previewImage} />
+              ) : (
+                <View style={styles.previewFallback}>
+                  <FileText size={22} color={t.iconDefault} />
+                  <Text style={[styles.previewFallbackText, { color: t.textSecondary }]}>First-page preview unavailable for this file type.</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.previewMeta, { color: t.textSecondary }]}>{formatPreviewName(fileName || uploadedFile?.name)}</Text>
+          </View>
+        ) : null}
+
         {renderDropdowns()}
 
-        {/* Number of copies */}
-        <CounterRow label="Number of copies" value={copies} onChange={setCopies} />
+        {colorMode === 'custom' ? (
+          <Input
+            label="Custom color request"
+            placeholder="Describe the custom color split, pages or combinations"
+            value={customColorDescription}
+            onChangeText={setCustomColorDescription}
+            multiline
+          />
+        ) : null}
 
-        {subService !== 'thesis' && (
-          <>
-            <Text style={[styles.addonTitle, { color: t.textPrimary }]}>Addon's</Text>
-            <CounterRow label="Linear Graph Sheets" value={linearGraph} onChange={setLinearGraph} />
-            <CounterRow label="Semi Log Graph sheets" value={semiLogGraph} onChange={setSemiLogGraph} />
-          </>
-        )}
+        {showThesisSpineText ? (
+          <Input
+            label="Thesis side-strip text"
+            placeholder="Example: MBA Dissertation 2026"
+            value={thesisSpineText}
+            onChangeText={setThesisSpineText}
+          />
+        ) : null}
 
-        {/* Special Instructions */}
+        <View style={styles.spacedBlock}>
+          <QuantityPicker label="Number of copies" value={copies} onChange={setCopies} min={1} max={999} />
+        </View>
+
         <View style={styles.instructionsSection}>
-          <Text style={[styles.dropdownLabel, { color: t.textPrimary }]}>Special Instructions</Text>
+          <Text style={[styles.dropdownLabel, { color: t.textSecondary }]}>Special instructions</Text>
           <TextInput
-            style={[styles.instructionsInput, { borderBottomColor: t.border, color: t.textPrimary }]}
-            placeholder="Type your instruction here"
+            style={[styles.instructionsInput, { borderColor: t.border, color: t.textPrimary, backgroundColor: t.card }]}
+            placeholder="Any notes for print operator"
             placeholderTextColor={t.placeholder}
             value={instructions}
             onChangeText={setInstructions}
@@ -640,50 +834,32 @@ export const StandardPrintingScreen: React.FC = () => {
           />
         </View>
 
-        {/* About */}
-        <View style={styles.aboutSection}>
-          <Text style={[styles.aboutTitle, { color: t.textPrimary }]}>About the Service</Text>
-          <Text style={[styles.aboutLabel, { color: t.textMuted }]}>
-            Instant Printing (within one hour)
-          </Text>
-          <Text style={[styles.aboutBody, { color: t.textSecondary }]}>
-            Get your documents printed quickly and professionally with SpeedCopy. We offer high-quality black & white or color printing on 70 GSM paper, ideal for everyday use \u2014 from assignments and reports to official documents.
-          </Text>
-          <Text style={[styles.aboutBody, { color: t.textSecondary }]}>
-            {'\u2022'} Sharp, clear prints on standard A4 size{'\n'}
-            {'\u2022'} Available 70 GSM paper for smooth handling{'\n'}
-            {'\u2022'} Upload PDFs or images directly in the app{'\n'}
-            {'\u2022'} Fast turnaround & doorstep delivery (if available){'\n'}
-            Print smart. Print fast. Only with SpeedCopy.
-          </Text>
-        </View>
+        {subService !== 'thesis' ? (
+          <>
+            <Text style={[styles.addonTitle, { color: t.textPrimary }]}>Add-ons</Text>
+            <View style={styles.spacedBlock}>
+              <QuantityPicker label="Linear graph sheets" value={linearGraph} onChange={setLinearGraph} min={0} max={150} />
+            </View>
+            <View style={styles.spacedBlock}>
+              <QuantityPicker label="Semi-log graph sheets" value={semiLogGraph} onChange={setSemiLogGraph} min={0} max={150} />
+            </View>
+          </>
+        ) : null}
 
-        {/* Price */}
-        <View style={[styles.priceSection, { backgroundColor: t.card }]}>
+        <View style={[styles.priceSection, { backgroundColor: t.card, borderColor: t.border }]}> 
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabelGreen}>Base Price</Text>
-            {pricingLoading ? (
-              <ActivityIndicator size="small" color={t.textPrimary} />
-            ) : (
-              <Text style={[styles.priceValue, { color: t.textPrimary }]}>{pricing ? `\u20B9${pricing.basePrice}` : '\u2014'}</Text>
-            )}
+            <Text style={[styles.priceLabel, { color: Colors.green }]}>Base price</Text>
+            {pricingLoading ? <ActivityIndicator size="small" color={t.textPrimary} /> : <Text style={[styles.priceValue, { color: t.textPrimary }]}>{pricing ? `₹${pricing.basePrice}` : '--'}</Text>}
           </View>
           <View style={[styles.priceDivider, { backgroundColor: t.divider }]} />
           <View style={styles.priceRow}>
             <Text style={[styles.totalLabel, { color: t.textPrimary }]}>Total payable</Text>
-            <View style={styles.totalWrap}>
-              {pricingLoading ? (
-                <ActivityIndicator size="small" color={t.textPrimary} />
-              ) : (
-                <Text style={[styles.totalValue, { color: t.textPrimary }]}>{pricing ? `\u20B9${pricing.total}` : '\u2014'}</Text>
-              )}
-            </View>
+            {pricingLoading ? <ActivityIndicator size="small" color={t.textPrimary} /> : <Text style={[styles.totalValue, { color: t.textPrimary }]}>{pricingLabel}</Text>}
           </View>
         </View>
 
-        {/* Add to Cart */}
         <TouchableOpacity
-          style={[styles.addToCartBtn, { backgroundColor: t.textPrimary }, (submitting || uploading || !pricing || !uploadedFile?.url) && { opacity: 0.6 }]}
+          style={[styles.addToCartBtn, { backgroundColor: t.textPrimary }, (submitting || uploading || !pricing || !uploadedFile?.url) && styles.disabledBtn]}
           onPress={handleAddToCart}
           activeOpacity={0.85}
           disabled={submitting || uploading || !pricing || !uploadedFile?.url}
@@ -691,7 +867,7 @@ export const StandardPrintingScreen: React.FC = () => {
           {submitting ? (
             <ActivityIndicator color={t.background} />
           ) : (
-            <Text style={[styles.addToCartText, { color: t.background }]}>Add to Cart</Text>
+            <Text style={[styles.addToCartText, { color: t.background }]}>Proceed to cart</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -704,209 +880,164 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: '#242424',
+    ...Typography.title,
     textAlign: 'center',
   },
+  headerSpacer: { width: 24 },
   scroll: {
-    paddingTop: 8,
-    paddingHorizontal: 16,
+    paddingTop: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
   heading: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: '#000',
+    ...Typography.h3,
   },
   subheading: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#6B6B6B',
-    marginBottom: 20,
+    ...Typography.bodySm,
+    marginBottom: Spacing.lg,
     marginTop: 2,
   },
-
   uploadBox: {
     alignItems: 'center',
-    paddingVertical: 24,
-    marginBottom: 24,
-    gap: 6,
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    paddingVertical: Spacing.lg,
+    marginBottom: Spacing.md,
+    gap: Spacing.xs,
   },
   uploadIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F0F0F0',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   uploadTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    color: '#000',
+    ...Typography.bodyBold,
   },
   uploadSub: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    color: '#6B6B6B',
+    ...Typography.caption,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 17,
+    paddingHorizontal: Spacing.lg,
   },
   chooseFileBtn: {
-    backgroundColor: '#000',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 8,
+    borderRadius: Radii.button,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: Spacing.xs,
+    maxWidth: '88%',
   },
   chooseFileText: {
+    ...Typography.caption,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
-    color: '#FFF',
   },
-
+  previewBlock: {
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.xs,
+  },
+  previewTitle: {
+    ...Typography.subtitle,
+  },
+  previewBody: {
+    borderRadius: Radii.small,
+    overflow: 'hidden',
+    height: 138,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+  },
+  previewFallbackText: {
+    ...Typography.caption,
+    textAlign: 'center',
+  },
+  previewMeta: {
+    ...Typography.small,
+  },
   dropdownSection: {
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   dropdownLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 15,
-    color: '#000',
-    marginBottom: 6,
+    ...Typography.subtitle,
+    marginBottom: Spacing.xs,
   },
   dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingVertical: 10,
-  },
-  dropdownTriggerText: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-    color: '#A5A5A5',
-  },
-  dropdownTriggerSelected: {
-    color: '#424242',
-  },
-  optionsList: {
-    paddingTop: 6,
-    paddingLeft: 4,
-  },
-  optionItem: {
-    paddingVertical: 8,
-  },
-  optionText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
-    color: '#424242',
-  },
-  optionTextActive: {
-    fontFamily: 'Poppins_700Bold',
-    color: '#000',
-  },
-
-  counterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  counterLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 15,
-    color: '#000',
-    flex: 1,
-  },
-  counterControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  counterBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  counterBtnMinus: {
-    backgroundColor: '#EB5757',
-  },
-  counterBtnPlus: {
-    backgroundColor: '#27AE60',
-  },
-  counterValue: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 15,
-    color: '#000',
-    minWidth: 24,
-    textAlign: 'center',
-  },
-
-  addonTitle: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 16,
-    color: '#000',
-    marginBottom: 12,
-    marginTop: 4,
-  },
-
-  instructionsSection: {
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  instructionsInput: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-    color: '#000',
-    paddingVertical: 10,
+    borderWidth: 1,
+    borderRadius: Radii.input,
+    paddingHorizontal: Spacing.md,
     minHeight: 44,
   },
-
-  aboutSection: {
-    marginBottom: 20,
-    gap: 6,
+  dropdownTriggerText: {
+    ...Typography.body,
+    flex: 1,
+    marginRight: Spacing.sm,
   },
-  aboutTitle: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 14,
-    color: '#000',
+  optionsList: {
+    borderWidth: 1,
+    borderRadius: Radii.input,
+    marginTop: 6,
+    overflow: 'hidden',
   },
-  aboutLabel: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    color: '#424242',
+  optionItem: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  aboutBody: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 11,
-    lineHeight: 17,
-    color: '#6B6B6B',
+  optionText: {
+    ...Typography.body,
   },
-
+  spacedBlock: {
+    marginBottom: Spacing.sm,
+  },
+  addonTitle: {
+    ...Typography.subtitle,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  instructionsSection: {
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  instructionsInput: {
+    borderWidth: 1,
+    borderRadius: Radii.input,
+    ...Typography.body,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    minHeight: 84,
+  },
   priceSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 20,
-    gap: 10,
+    borderRadius: Radii.section,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+    borderWidth: 1,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
-      android: { elevation: 2 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },
+      android: { elevation: 1 },
+      default: {},
     }),
   },
   priceRow: {
@@ -914,63 +1045,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  priceLabelGreen: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    color: '#27AE60',
+  priceLabel: {
+    ...Typography.bodyBold,
   },
   priceValue: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    color: '#000',
-  },
-  priceValueDiscount: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    color: '#EB5757',
-  },
-  discountHint: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 10,
-    color: '#27AE60',
-    marginTop: 1,
+    ...Typography.bodyBold,
   },
   priceDivider: {
-    height: 0.5,
-    backgroundColor: '#E0E0E0',
+    height: StyleSheet.hairlineWidth,
   },
   totalLabel: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
-    color: '#000',
-  },
-  totalWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    ...Typography.subtitle,
+    fontFamily: 'Poppins_600SemiBold',
   },
   totalValue: {
+    ...Typography.subtitle,
     fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
-    color: '#000',
   },
-  totalOld: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    color: '#A5A5A5',
-    textDecorationLine: 'line-through',
-  },
-
   addToCartBtn: {
-    backgroundColor: '#000',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: Radii.button,
+    paddingVertical: 13,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 46,
   },
   addToCartText: {
+    ...Typography.bodyBold,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    color: '#FFF',
+    fontSize: 15,
+  },
+  disabledBtn: {
+    opacity: 0.58,
   },
 });
-

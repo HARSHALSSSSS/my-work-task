@@ -1,7 +1,14 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Platform, ActivityIndicator, Image,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,8 +17,9 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import { PrintStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, sortProducts } from '../../utils/product';
+import { dedupeProducts, getProductImageUrl, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
+import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'BusinessShopByCategory'>;
 
@@ -26,12 +34,17 @@ type DesignProduct = {
   discount?: string;
 };
 
+type FilterMode = 'all' | 'premium' | 'budget';
+
+const FALLBACK_BANNER = require('../../../assets/images/print-cat-business.png');
+
 export const BusinessShopByCategoryScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<any>();
   const { colors: t } = useThemeStore();
   const [query, setQuery] = useState('');
   const [activeChip, setActiveChip] = useState('All');
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [products, setProducts] = useState<DesignProduct[]>([]);
   const [filterChips, setFilterChips] = useState(['All', 'Business', 'Marketing', 'Personal']);
   const [loading, setLoading] = useState(true);
@@ -42,86 +55,115 @@ export const BusinessShopByCategoryScreen: React.FC = () => {
   const selectedProductOriginalPrice = route.params?.originalPrice as number | undefined;
   const selectedProductDiscount = route.params?.discount as string | undefined;
 
-  useFocusEffect(useCallback(() => {
-    setLoading(true);
-    Promise.all([
-      productsApi.getBusinessPrintProducts({ limit: 20 }).catch(() => null),
-      productsApi.getBusinessPrintTypes().catch(() => null),
-      selectedProductId ? productsApi.getBusinessPrintProduct(selectedProductId).catch(() => null) : Promise.resolve(null),
-    ]).then(([productsRes, typesRes, selectedProductRes]) => {
-      const rawItems = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
-      const selectedItems = selectedProductRes ? [selectedProductRes] : [];
-      const routeFallbackItems = selectedProductId ? [{
-        _id: selectedProductId,
-        id: selectedProductId,
-        name: selectedProductName,
-        thumbnail: selectedProductImage,
-        images: selectedProductImage ? [selectedProductImage] : [],
-        category: route.params?.category || 'Business',
-        basePrice: selectedProductPrice,
-        discountedPrice: selectedProductPrice,
-        mrp: selectedProductOriginalPrice,
-        discountLabel: selectedProductDiscount,
-      }] : [];
-      const items = sortProducts(dedupeProducts([...selectedItems, ...routeFallbackItems, ...rawItems]));
-      const mapped = (items || [])
-        .map((p: any) => {
-          const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-          return {
-            id: p._id || p.id,
-            name: p.name,
-            category: typeof p.category === 'object' ? p.category?.name : (p.category || 'Business'),
-            hasPremium: p.isFeatured || p.is_featured || false,
-            thumbnail: getProductImageUrl(p),
-            price,
-            originalPrice,
-            discount: discountLabel,
-          };
-        })
-        .filter((p: DesignProduct) => Boolean(p.id));
-      const uniqueProducts = dedupeProducts(mapped);
-      if (selectedProductId) {
-        const selectedOnly = uniqueProducts.filter((p: DesignProduct) => p.id === selectedProductId);
-        if (selectedOnly.length) {
-          setProducts(selectedOnly);
-        } else if (selectedProductName || selectedProductImage) {
-          setProducts([{
-            id: selectedProductId,
-            name: selectedProductName || 'Business Product',
-            category: route.params?.category || 'Business',
-            hasPremium: false,
-            thumbnail: selectedProductImage,
-            price: selectedProductPrice,
-            originalPrice: selectedProductOriginalPrice,
-            discount: selectedProductDiscount,
-          }]);
-        } else {
-          setProducts([]);
-        }
-      } else {
-        setProducts(uniqueProducts);
-      }
-      if (typesRes?.length) {
-        const uniqueChips = Array.from(new Set(typesRes.map((t: any) => t.name || t).filter(Boolean)));
-        setFilterChips(['All', ...uniqueChips]);
-      } else {
-        setFilterChips(['All', 'Business', 'Marketing', 'Personal']);
-      }
-      setLoading(false);
-    }).catch(() => {
-      setProducts([]);
-      setFilterChips(['All', 'Business', 'Marketing', 'Personal']);
-      setLoading(false);
-    });
-  }, [route.params?.category, selectedProductDiscount, selectedProductId, selectedProductImage, selectedProductName, selectedProductOriginalPrice, selectedProductPrice]));
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      Promise.all([
+        productsApi.getBusinessPrintProducts({ limit: 40 }).catch(() => null),
+        productsApi.getBusinessPrintTypes().catch(() => null),
+        selectedProductId ? productsApi.getBusinessPrintProduct(selectedProductId).catch(() => null) : Promise.resolve(null),
+      ])
+        .then(([productsRes, typesRes, selectedProductRes]) => {
+          const rawItems = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
+          const selectedItems = selectedProductRes ? [selectedProductRes] : [];
+          const routeFallbackItems = selectedProductId
+            ? [{
+              _id: selectedProductId,
+              id: selectedProductId,
+              name: selectedProductName,
+              thumbnail: selectedProductImage,
+              images: selectedProductImage ? [selectedProductImage] : [],
+              category: route.params?.category || 'Business',
+              basePrice: selectedProductPrice,
+              discountedPrice: selectedProductPrice,
+              mrp: selectedProductOriginalPrice,
+              discountLabel: selectedProductDiscount,
+            }]
+            : [];
 
-  const filtered = products.filter((p) => {
-    if (activeChip !== 'All' && p.category !== activeChip) return false;
-    if (query.trim()) {
-      return p.name.toLowerCase().includes(query.toLowerCase());
+          const items = sortProducts(dedupeProducts([...selectedItems, ...routeFallbackItems, ...rawItems]));
+          const mapped = (items || [])
+            .map((p: any) => {
+              const { price, originalPrice, discountLabel } = resolveProductPricing(p);
+              return {
+                id: p._id || p.id,
+                name: p.name,
+                category: typeof p.category === 'object' ? p.category?.name : p.category || 'Business',
+                hasPremium: Boolean(p.isFeatured || p.is_featured || p.designType === 'premium'),
+                thumbnail: getProductImageUrl(p),
+                price,
+                originalPrice,
+                discount: discountLabel,
+              };
+            })
+            .filter((p: DesignProduct) => Boolean(p.id));
+
+          const uniqueProducts = dedupeProducts(mapped);
+          if (selectedProductId) {
+            const selectedOnly = uniqueProducts.filter((p: DesignProduct) => p.id === selectedProductId);
+            if (selectedOnly.length > 0) {
+              setProducts(selectedOnly);
+            } else if (selectedProductName || selectedProductImage) {
+              setProducts([
+                {
+                  id: selectedProductId,
+                  name: selectedProductName || 'Business Product',
+                  category: route.params?.category || 'Business',
+                  hasPremium: false,
+                  thumbnail: selectedProductImage,
+                  price: selectedProductPrice,
+                  originalPrice: selectedProductOriginalPrice,
+                  discount: selectedProductDiscount,
+                },
+              ]);
+            } else {
+              setProducts([]);
+            }
+          } else {
+            setProducts(uniqueProducts);
+          }
+
+          if (typesRes?.length) {
+            const uniqueChips = Array.from(new Set(typesRes.map((x: any) => x.name || x).filter(Boolean)));
+            setFilterChips(['All', ...uniqueChips]);
+          } else {
+            setFilterChips(['All', 'Business', 'Marketing', 'Personal']);
+          }
+        })
+        .catch(() => {
+          setProducts([]);
+          setFilterChips(['All', 'Business', 'Marketing', 'Personal']);
+        })
+        .finally(() => setLoading(false));
+    }, [
+      route.params?.category,
+      selectedProductDiscount,
+      selectedProductId,
+      selectedProductImage,
+      selectedProductName,
+      selectedProductOriginalPrice,
+      selectedProductPrice,
+    ]),
+  );
+
+  const bannerImage = toAbsoluteAssetUrl(selectedProductImage) || Image.resolveAssetSource(FALLBACK_BANNER).uri;
+
+  const filtered = useMemo(() => {
+    let list = products;
+    if (activeChip !== 'All') {
+      list = list.filter((p) => p.category === activeChip);
     }
-    return true;
-  });
+    if (filterMode === 'premium') {
+      list = list.filter((p) => p.hasPremium || Boolean(p.discount));
+    } else if (filterMode === 'budget') {
+      list = list.filter((p) => (p.price || 0) <= 200);
+    }
+    const keyword = query.trim().toLowerCase();
+    if (keyword) {
+      list = list.filter((p) => p.name.toLowerCase().includes(keyword));
+    }
+    return list;
+  }, [activeChip, filterMode, products, query]);
 
   const onExplorePremiumPress = useCallback(
     (item: DesignProduct) => {
@@ -154,124 +196,121 @@ export const BusinessShopByCategoryScreen: React.FC = () => {
     <SafeScreen>
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerSlot} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <ChevronLeft size={24} color={t.textPrimary} />
+          <ChevronLeft size={22} color={t.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Shop by category</Text>
+        <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Business Printing</Text>
         <View style={styles.headerSlot} />
       </View>
 
-      <View style={[styles.searchRow, { backgroundColor: t.inputBg, borderColor: t.searchBorder }]}>
-        <Search size={18} color={t.placeholder} />
-        <TextInput
-          style={[styles.searchInput, { color: t.textPrimary }]}
-          placeholder="Search"
-          placeholderTextColor={t.placeholder}
-          value={query}
-          onChangeText={setQuery}
-          returnKeyType="search"
-        />
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipsContainer}
-        contentContainerStyle={styles.chipsRow}
-      >
-        {filterChips.map((chip) => {
-          const active = activeChip === chip;
-          return (
-            <TouchableOpacity
-              key={chip}
-              style={[styles.chip, { backgroundColor: t.chipBg }, active && [styles.chipActive, { backgroundColor: t.textPrimary }]]}
-              onPress={() => setActiveChip(chip)}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.chipText, { color: t.textMuted }, active && [styles.chipTextActive, { color: t.background }]]}>{chip}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={t.textPrimary} />
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.bannerWrap}>
+          <Image source={{ uri: bannerImage }} style={styles.bannerImage} resizeMode="cover" />
+          <View style={styles.bannerOverlay}>
+            <Text style={styles.bannerTitle}>{selectedProductName || 'Custom Business Prints'}</Text>
+            <Text style={styles.bannerSub}>Choose a design path below</Text>
+          </View>
         </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No product found</Text>
-          <Text style={[styles.emptySub, { color: t.textSecondary }]}>
-            The selected print product could not be loaded here yet.
-          </Text>
+
+        <View style={[styles.searchRow, { backgroundColor: t.inputBg, borderColor: t.searchBorder }]}> 
+          <Search size={18} color={t.placeholder} />
+          <TextInput
+            style={[styles.searchInput, { color: t.textPrimary }]}
+            placeholder="Search"
+            placeholderTextColor={t.placeholder}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+          />
         </View>
-      ) : (
-        <ScrollView
-          style={{ flex: 1 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scroll}
-        >
-          {filtered.map((item) => (
-            <View key={item.id} style={styles.productBlock}>
-              <View style={styles.gridRow}>
-                <ProductDesignCard
-                  product={item}
-                  buttonLabel="Explore Premium designs"
-                  onPress={() => onExplorePremiumPress(item)}
-                />
-                <ProductDesignCard
-                  product={item}
-                  buttonLabel="Start design"
-                  onPress={() => onStartDesignPress(item)}
-                />
-              </View>
-            </View>
-          ))}
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer} contentContainerStyle={styles.chipsRow}>
+          {filterChips.map((chip) => {
+            const active = activeChip === chip;
+            return (
+              <TouchableOpacity
+                key={chip}
+                style={[styles.chip, { backgroundColor: active ? t.textPrimary : t.chipBg }]}
+                onPress={() => setActiveChip(chip)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.chipText, { color: active ? t.background : t.textMuted }]}>{chip}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
-      )}
+
+        <View style={styles.filterModeRow}>
+          {(['all', 'premium', 'budget'] as FilterMode[]).map((mode) => {
+            const active = filterMode === mode;
+            const label = mode === 'all' ? 'All products' : mode === 'premium' ? 'Premium' : 'Budget';
+            return (
+              <TouchableOpacity
+                key={mode}
+                onPress={() => setFilterMode(mode)}
+                style={[styles.modeChip, { borderColor: t.border, backgroundColor: active ? t.textPrimary : t.card }]}
+              >
+                <Text style={[styles.modeChipText, { color: active ? t.background : t.textSecondary }]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={t.textPrimary} />
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No product found</Text>
+            <Text style={[styles.emptySub, { color: t.textSecondary }]}>Try another filter or search keyword.</Text>
+          </View>
+        ) : (
+          <View style={styles.productBlock}>
+            {filtered.map((item) => (
+              <View key={item.id} style={[styles.productCard, { backgroundColor: t.card, borderColor: t.divider }]}> 
+                <View style={[styles.productImageWrap, { backgroundColor: t.chipBg }]}> 
+                  {item.thumbnail ? <Image source={{ uri: item.thumbnail }} style={styles.productImage} resizeMode="cover" /> : <FileText size={42} color={t.iconDefault} />}
+                </View>
+
+                <View style={styles.productBody}>
+                  <Text style={[styles.productName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
+                  <Text style={[styles.productCategory, { color: t.textSecondary }]}>{item.category}</Text>
+                  <View style={styles.priceRow}>
+                    {item.price ? <Text style={[styles.price, { color: t.textPrimary }]}>₹{item.price}</Text> : null}
+                    {item.originalPrice ? <Text style={[styles.priceStrike, { color: t.placeholder }]}>₹{item.originalPrice}</Text> : null}
+                    {item.discount ? <Text style={styles.discount}>{item.discount}</Text> : null}
+                  </View>
+                </View>
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: t.textPrimary }]} onPress={() => onExplorePremiumPress(item)}>
+                    <Text style={[styles.actionText, { color: t.background }]}>Explore Premium</Text>
+                    <ArrowRight size={14} color={t.background} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionBtn, styles.secondaryAction, { borderColor: t.border }]} onPress={() => onStartDesignPress(item)}>
+                    <Text style={[styles.actionText, { color: t.textPrimary }]}>Start design</Text>
+                    <ArrowRight size={14} color={t.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </SafeScreen>
   );
 };
-
-function ProductDesignCard({
-  product,
-  buttonLabel,
-  onPress,
-}: {
-  product: DesignProduct;
-  buttonLabel: string;
-  onPress: () => void;
-}) {
-  const { colors: t } = useThemeStore();
-  return (
-    <TouchableOpacity style={[styles.designCard, { backgroundColor: t.chipBg, borderColor: t.divider }]} activeOpacity={0.85} onPress={onPress}>
-      <View style={[styles.designImage, { backgroundColor: t.chipBg }]}>
-        {product.thumbnail ? (
-          <Image source={{ uri: product.thumbnail }} style={styles.designImgFull} resizeMode="cover" />
-        ) : (
-          <FileText size={40} color={t.iconDefault} />
-        )}
-      </View>
-      <View style={[styles.designBtn, { backgroundColor: t.textPrimary }]}>
-        <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>
-          {buttonLabel}
-        </Text>
-        <ArrowRight size={14} color={t.background} style={{ flexShrink: 0 }} />
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
-    minHeight: 52,
-    gap: 12,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
+    minHeight: 48,
+    gap: Spacing.sm,
   },
   headerSlot: {
     width: 24,
@@ -279,141 +318,177 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
-    color: '#000',
+    ...Typography.title,
     textAlign: 'center',
     flex: 1,
+  },
+  scroll: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 100,
+    gap: Spacing.sm,
+  },
+  bannerWrap: {
+    borderRadius: Radii.section,
+    overflow: 'hidden',
+    marginBottom: Spacing.sm,
+  },
+  bannerImage: {
+    width: '100%',
+    height: scale(150),
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'flex-end',
+    padding: Spacing.md,
+  },
+  bannerTitle: {
+    ...Typography.h3,
+    color: '#FFFFFF',
+  },
+  bannerSub: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.92)',
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
-    marginHorizontal: 16,
-    marginBottom: 12,
+    borderRadius: Radii.input,
+    paddingHorizontal: Spacing.md,
+    minHeight: 42,
+    gap: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    marginBottom: Spacing.xs,
   },
   searchInput: {
+    ...Typography.body,
     flex: 1,
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
-    color: '#000',
-    padding: 0,
+    paddingVertical: 0,
   },
   chipsContainer: {
-    height: 52,
     flexGrow: 0,
+    marginBottom: Spacing.xs,
   },
   chipsRow: {
-    paddingHorizontal: 16,
-    paddingRight: 24,
-    gap: 10,
+    gap: 8,
     alignItems: 'center',
-    height: 52,
+    paddingRight: 8,
   },
   chip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 24,
-    backgroundColor: '#F0F0F0',
-  },
-  chipActive: {
-    backgroundColor: '#000000',
   },
   chipText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    color: '#424242',
-    lineHeight: 18,
+    ...Typography.caption,
   },
-  chipTextActive: {
-    color: '#FFFFFF',
+  filterModeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  modeChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  modeChipText: {
+    ...Typography.small,
   },
   loadingWrap: {
-    flex: 1,
+    paddingVertical: 32,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 30,
   },
   emptyWrap: {
-    flex: 1,
+    paddingVertical: 36,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    gap: 8,
+    gap: 6,
   },
   emptyTitle: {
+    ...Typography.subtitle,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
-    textAlign: 'center',
   },
   emptySub: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 20,
+    ...Typography.caption,
     textAlign: 'center',
   },
-  scroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-    gap: 18,
-    paddingTop: 8,
-  },
   productBlock: {
-    gap: 12,
+    gap: Spacing.sm,
   },
-  gridRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'stretch',
-  },
-  designCard: {
-    flex: 1,
-    backgroundColor: '#F8F8F8',
-    borderRadius: 16,
-    overflow: 'hidden',
+  productCard: {
     borderWidth: 1,
-    borderColor: '#E8EAF0',
-    minHeight: 224,
+    borderRadius: Radii.section,
+    overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 10 },
-      android: { elevation: 3 },
+      ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8 },
+      android: { elevation: 2 },
     }),
   },
-  designImage: {
+  productImageWrap: {
     width: '100%',
-    height: 170,
+    height: scale(145),
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F0F0F0',
-    overflow: 'hidden',
   },
-  designImgFull: {
+  productImage: {
     width: '100%',
     height: '100%',
   },
-  designBtn: {
+  productBody: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    gap: 2,
+  },
+  productName: {
+    ...Typography.subtitle,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  productCategory: {
+    ...Typography.caption,
+  },
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#000000',
-    paddingVertical: 11,
-    paddingHorizontal: 12,
     gap: 6,
+    marginTop: 2,
   },
-  designBtnText: {
+  price: {
+    ...Typography.bodyBold,
+    fontSize: 13,
+  },
+  priceStrike: {
+    ...Typography.small,
+    textDecorationLine: 'line-through',
+  },
+  discount: {
+    ...Typography.small,
+    color: Colors.green,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 10.5,
-    color: '#FFFFFF',
-    flexShrink: 1,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
+    borderRadius: Radii.button,
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 8,
+  },
+  secondaryAction: {
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  actionText: {
+    ...Typography.caption,
+    fontFamily: 'Poppins_600SemiBold',
   },
 });
-

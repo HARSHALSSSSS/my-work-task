@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -202,7 +202,10 @@ export function AddressScreen() {
                   styles.card,
                   cardShadow(),
                   { backgroundColor: t.card },
-                  selected && styles.cardSelected,
+                  selected && [
+                    styles.cardSelected,
+                    { borderColor: Colors.blueAccent, backgroundColor: themeMode === 'dark' ? t.chipBg : Colors.blueLightBg },
+                  ],
                 ]}
                 onPress={() => setSelectedId(addr.id)}
                 activeOpacity={0.92}
@@ -289,8 +292,8 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 22,
     color: Colors.textDark,
   },
   scroll: {
@@ -301,11 +304,11 @@ const styles = StyleSheet.create({
   noticeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: Spacing.sm,
     backgroundColor: Colors.blueLightBg,
     borderRadius: Radii.section,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(114, 146, 255, 0.25)',
   },
@@ -333,14 +336,14 @@ const styles = StyleSheet.create({
   },
   noticeTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     color: Colors.textDark,
   },
   noticeSubtitle: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textSecondary,
   },
   sectionHeader: {
@@ -351,14 +354,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: Colors.textDark,
   },
   sectionCount: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textSecondary,
   },
   card: {
@@ -366,11 +369,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     backgroundColor: Colors.surface,
     borderRadius: Radii.section,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    borderWidth: 2,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1.5,
     borderColor: 'transparent',
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   cardSelected: {
     borderColor: Colors.blueAccent,
@@ -407,26 +410,26 @@ const styles = StyleSheet.create({
   },
   cardKindLabel: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 19,
     color: Colors.textDark,
   },
   cardLine: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textDark,
   },
   cardLineMuted: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 16,
     color: Colors.textSecondary,
   },
   pinLine: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textMuted,
     marginTop: 2,
   },
@@ -437,8 +440,8 @@ const styles = StyleSheet.create({
   },
   addLink: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 19,
     color: Colors.blueAccent,
   },
   form: {
