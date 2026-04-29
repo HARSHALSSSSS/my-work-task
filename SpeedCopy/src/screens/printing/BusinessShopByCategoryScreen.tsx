@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   bannerWrap: {
     borderRadius: Radii.section,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   bannerImage: {
     width: '100%',
-    height: scale(150),
+    height: scale(134),
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -355,10 +355,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radii.input,
     paddingHorizontal: Spacing.md,
-    minHeight: 42,
+    minHeight: 40,
     gap: Spacing.sm,
     borderWidth: 1,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.xxs,
   },
   searchInput: {
     ...Typography.body,
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   chipsContainer: {
     flexGrow: 0,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.xxs,
   },
   chipsRow: {
     gap: 8,
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   filterModeRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
     flexWrap: 'wrap',
   },
   modeChip: {
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   productImageWrap: {
     width: '100%',
-    height: scale(145),
+    height: scale(130),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   },
   productBody: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.xs,
     gap: 2,
   },
   productName: {
@@ -471,12 +471,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   actionBtn: {
     flex: 1,
     borderRadius: Radii.button,
-    minHeight: 38,
+    minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',

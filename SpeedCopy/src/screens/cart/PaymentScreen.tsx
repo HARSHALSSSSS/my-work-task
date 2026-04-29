@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Platform,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   scroll: {
-    paddingTop: 8,
+    paddingTop: Spacing.xs,
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
@@ -290,22 +290,23 @@ const styles = StyleSheet.create({
   },
   orderTitle: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: 22,
+    fontSize: 18,
+    lineHeight: 24,
     color: '#000',
-    marginTop: 8,
+    marginTop: Spacing.xs,
   },
   orderSub: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B6B6B',
-    marginBottom: 16,
+    marginBottom: Spacing.sm,
     marginTop: 2,
   },
   itemCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   itemRow: {
     flexDirection: 'row',
@@ -476,8 +477,8 @@ const styles = StyleSheet.create({
   priceCard: {
     backgroundColor: '#F0FDF4',
     borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: '#D1FAE5',
   },
@@ -541,10 +542,10 @@ const styles = StyleSheet.create({
   payBtn: {
     backgroundColor: '#0F766E',
     borderRadius: 12,
-    height: 52,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: Spacing.sm,
   },
   disabledBtn: {
     opacity: 0.45,

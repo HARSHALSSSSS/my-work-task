@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform,
 } from 'react-native';
@@ -13,6 +13,7 @@ import { PrintStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
 import { useOrderStore } from '../../store/useOrderStore';
+import { Radii, Spacing, Typography } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'Packages'>;
 type Route = RouteProp<PrintStackParamList, 'Packages'>;
@@ -315,20 +316,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: '#242424',
+    ...Typography.title,
     textAlign: 'center',
   },
   scroll: {
-    paddingTop: 6,
-    paddingHorizontal: 16,
+    paddingTop: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
 
@@ -337,10 +335,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 20,
+    borderRadius: Radii.section,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.lg,
     ...Platform.select({
       ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
       android: { elevation: 1 },
@@ -348,19 +346,17 @@ const styles = StyleSheet.create({
   },
   locationLeft: {
     flex: 1,
-    gap: 2,
+    gap: Spacing.xxs,
   },
   locationLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 10,
+    ...Typography.small,
     letterSpacing: 0.8,
-    color: '#6B6B6B',
     textTransform: 'uppercase',
   },
   locationAddrRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.xs,
   },
   greenDot: {
     width: 8,
@@ -369,46 +365,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#27AE60',
   },
   locationAddr: {
+    ...Typography.bodySm,
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    color: '#242424',
     flex: 1,
   },
   changeLink: {
+    ...Typography.bodySm,
     fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
     color: '#66C28A',
   },
   changePill: {
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginLeft: 10,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    marginLeft: Spacing.sm,
   },
 
   methodLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    color: '#424242',
-    marginBottom: 8,
+    ...Typography.subtitle,
+    marginBottom: Spacing.xs,
   },
   methodTabs: {
     flexDirection: 'row',
-    gap: 0,
-    marginBottom: 22,
+    marginBottom: Spacing.lg,
     backgroundColor: '#EDEFF3',
-    borderRadius: 12,
-    padding: 3,
+    borderRadius: Radii.input,
+    padding: 2,
   },
   methodTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 8,
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radii.small,
   },
   methodTabActive: {
     backgroundColor: '#FFFFFF',
@@ -418,8 +410,9 @@ const styles = StyleSheet.create({
     }),
   },
   methodTabText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
+    ...Typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: '#A5A5A5',
   },
   methodTabTextActive: {
@@ -427,31 +420,28 @@ const styles = StyleSheet.create({
   },
 
   packageHeading: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 20,
-    lineHeight: 28,
-    color: '#1A3B5C',
-    marginBottom: 12,
+    ...Typography.h3,
+    marginBottom: Spacing.sm,
   },
   packageList: {
-    gap: 10,
+    gap: Spacing.sm,
   },
   packageCard: {
-    borderRadius: 12,
-    borderWidth: 0.5,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: Radii.section,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     overflow: 'hidden',
   },
   packageHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: Spacing.sm,
   },
   packageIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: Radii.small,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -460,52 +450,42 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   packageName: {
+    ...Typography.h4,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#000',
   },
   packageDuration: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#6B6B6B',
+    ...Typography.caption,
   },
   packageExpanded: {
-    marginTop: 12,
-    paddingLeft: 48,
+    marginTop: Spacing.sm,
+    paddingLeft: 44,
   },
   bulletRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 2,
+    gap: Spacing.sm,
+    marginBottom: Spacing.xxs,
   },
   bulletDot: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    color: '#424242',
-    lineHeight: 20,
+    ...Typography.bodySm,
+    lineHeight: 18,
   },
   bulletText: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
+    ...Typography.bodySm,
     lineHeight: 18,
-    color: '#424242',
     flex: 1,
   },
   selectBtn: {
     borderWidth: 1,
     borderColor: '#242424',
-    borderRadius: 7,
-    paddingVertical: 8,
+    borderRadius: Radii.small,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: Spacing.sm,
     backgroundColor: '#FFFFFF',
   },
   selectBtnText: {
+    ...Typography.bodyBold,
     fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
-    color: '#242424',
   },
 });
 

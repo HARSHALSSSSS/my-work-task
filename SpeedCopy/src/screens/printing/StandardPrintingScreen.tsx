@@ -280,15 +280,21 @@ export const StandardPrintingScreen: React.FC = () => {
   const [thesisSpineText, setThesisSpineText] = useState('');
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [showSecondaryDetails, setShowSecondaryDetails] = useState(false);
 
   const showThesisSpineText = subService === 'thesis' && bindingCover.includes('strip');
   const previewUri = uploadedFile?.url || fileUri;
   const isImagePreview = isImageLikeFile(fileName || uploadedFile?.name, previewUri);
   const serviceTitle = `${subService.charAt(0).toUpperCase()}${subService.slice(1)} Printing`;
+  const hasSecondaryValues = Boolean(instructions.trim() || linearGraph > 0 || semiLogGraph > 0);
 
   const toggleDropdown = useCallback((key: string) => {
     setOpenDropdown((prev) => (prev === key ? null : key));
   }, []);
+
+  useEffect(() => {
+    if (hasSecondaryValues) setShowSecondaryDetails(true);
+  }, [hasSecondaryValues]);
 
   const buildConfigPayload = useCallback(
     (file?: productsApi.UploadedFile | null, priceOnly = false) => {
@@ -796,54 +802,69 @@ export const StandardPrintingScreen: React.FC = () => {
           </View>
         ) : null}
 
-        {renderDropdowns()}
+        <View style={[styles.configCard, { borderColor: t.border, backgroundColor: t.card }]}>
+          {renderDropdowns()}
 
-        {colorMode === 'custom' ? (
-          <Input
-            label="Custom color request"
-            placeholder="Describe the custom color split, pages or combinations"
-            value={customColorDescription}
-            onChangeText={setCustomColorDescription}
-            multiline
-          />
-        ) : null}
+          {colorMode === 'custom' ? (
+            <Input
+              label="Custom color request"
+              placeholder="Describe the custom color split, pages or combinations"
+              value={customColorDescription}
+              onChangeText={setCustomColorDescription}
+              multiline
+            />
+          ) : null}
 
-        {showThesisSpineText ? (
-          <Input
-            label="Thesis side-strip text"
-            placeholder="Example: MBA Dissertation 2026"
-            value={thesisSpineText}
-            onChangeText={setThesisSpineText}
-          />
-        ) : null}
+          {showThesisSpineText ? (
+            <Input
+              label="Thesis side-strip text"
+              placeholder="Example: MBA Dissertation 2026"
+              value={thesisSpineText}
+              onChangeText={setThesisSpineText}
+            />
+          ) : null}
 
-        <View style={styles.spacedBlock}>
-          <QuantityPicker label="Number of copies" value={copies} onChange={setCopies} min={1} max={999} />
+          <View style={styles.spacedBlock}>
+            <QuantityPicker label="Number of copies" value={copies} onChange={setCopies} min={1} max={999} />
+          </View>
         </View>
 
-        <View style={styles.instructionsSection}>
-          <Text style={[styles.dropdownLabel, { color: t.textSecondary }]}>Special instructions</Text>
-          <TextInput
-            style={[styles.instructionsInput, { borderColor: t.border, color: t.textPrimary, backgroundColor: t.card }]}
-            placeholder="Any notes for print operator"
-            placeholderTextColor={t.placeholder}
-            value={instructions}
-            onChangeText={setInstructions}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
+        <TouchableOpacity
+          style={[styles.secondaryToggle, { borderColor: t.border, backgroundColor: t.card }]}
+          onPress={() => setShowSecondaryDetails((prev) => !prev)}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.secondaryToggleText, { color: t.textPrimary }]}>Additional instructions & add-ons</Text>
+          {showSecondaryDetails ? <ChevronUp size={18} color={t.textSecondary} /> : <ChevronDown size={18} color={t.textSecondary} />}
+        </TouchableOpacity>
 
-        {subService !== 'thesis' ? (
-          <>
-            <Text style={[styles.addonTitle, { color: t.textPrimary }]}>Add-ons</Text>
-            <View style={styles.spacedBlock}>
-              <QuantityPicker label="Linear graph sheets" value={linearGraph} onChange={setLinearGraph} min={0} max={150} />
+        {showSecondaryDetails ? (
+          <View style={[styles.secondaryBlock, { borderColor: t.border, backgroundColor: t.card }]}> 
+            <View style={styles.instructionsSection}>
+              <Text style={[styles.dropdownLabel, { color: t.textSecondary }]}>Special instructions</Text>
+              <TextInput
+                style={[styles.instructionsInput, { borderColor: t.border, color: t.textPrimary, backgroundColor: t.inputBg }]}
+                placeholder="Any notes for print operator"
+                placeholderTextColor={t.placeholder}
+                value={instructions}
+                onChangeText={setInstructions}
+                multiline
+                textAlignVertical="top"
+              />
             </View>
-            <View style={styles.spacedBlock}>
-              <QuantityPicker label="Semi-log graph sheets" value={semiLogGraph} onChange={setSemiLogGraph} min={0} max={150} />
-            </View>
-          </>
+
+            {subService !== 'thesis' ? (
+              <>
+                <Text style={[styles.addonTitle, { color: t.textPrimary }]}>Add-ons</Text>
+                <View style={styles.spacedBlock}>
+                  <QuantityPicker label="Linear graph sheets" value={linearGraph} onChange={setLinearGraph} min={0} max={150} />
+                </View>
+                <View style={styles.spacedBlock}>
+                  <QuantityPicker label="Semi-log graph sheets" value={semiLogGraph} onChange={setSemiLogGraph} min={0} max={150} />
+                </View>
+              </>
+            ) : null}
+          </View>
         ) : null}
 
         <View style={[styles.priceSection, { backgroundColor: t.card, borderColor: t.border }]}> 
@@ -899,24 +920,24 @@ const styles = StyleSheet.create({
   },
   subheading: {
     ...Typography.bodySm,
-    marginBottom: Spacing.lg,
-    marginTop: 2,
+    marginBottom: Spacing.md,
+    marginTop: Spacing.xxs,
   },
   uploadBox: {
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: Radii.section,
-    paddingVertical: Spacing.lg,
-    marginBottom: Spacing.md,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
     gap: Spacing.xs,
   },
   uploadIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.xxs,
   },
   uploadTitle: {
     ...Typography.bodyBold,
@@ -924,13 +945,13 @@ const styles = StyleSheet.create({
   uploadSub: {
     ...Typography.caption,
     textAlign: 'center',
-    lineHeight: 17,
-    paddingHorizontal: Spacing.lg,
+    lineHeight: 16,
+    paddingHorizontal: Spacing.md,
   },
   chooseFileBtn: {
     borderRadius: Radii.button,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
     marginTop: Spacing.xs,
     maxWidth: '88%',
   },
@@ -942,7 +963,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radii.section,
     padding: Spacing.md,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     gap: Spacing.xs,
   },
   previewTitle: {
@@ -951,7 +972,7 @@ const styles = StyleSheet.create({
   previewBody: {
     borderRadius: Radii.small,
     overflow: 'hidden',
-    height: 138,
+    height: 124,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -972,8 +993,14 @@ const styles = StyleSheet.create({
   previewMeta: {
     ...Typography.small,
   },
+  configCard: {
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
   dropdownSection: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   dropdownLabel: {
     ...Typography.subtitle,
@@ -1008,15 +1035,35 @@ const styles = StyleSheet.create({
     ...Typography.body,
   },
   spacedBlock: {
+    marginBottom: Spacing.xs,
+  },
+  secondaryToggle: {
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  secondaryToggleText: {
+    ...Typography.bodyBold,
+    flex: 1,
+  },
+  secondaryBlock: {
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    padding: Spacing.md,
     marginBottom: Spacing.sm,
   },
   addonTitle: {
     ...Typography.subtitle,
     marginTop: Spacing.xs,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   instructionsSection: {
-    marginTop: Spacing.xs,
     marginBottom: Spacing.sm,
   },
   instructionsInput: {
@@ -1025,13 +1072,13 @@ const styles = StyleSheet.create({
     ...Typography.body,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    minHeight: 84,
+    minHeight: 72,
   },
   priceSection: {
     borderRadius: Radii.section,
     padding: Spacing.md,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.lg,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
     gap: Spacing.sm,
     borderWidth: 1,
     ...Platform.select({
@@ -1064,15 +1111,15 @@ const styles = StyleSheet.create({
   },
   addToCartBtn: {
     borderRadius: Radii.button,
-    paddingVertical: 13,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 46,
+    minHeight: 44,
   },
   addToCartText: {
     ...Typography.bodyBold,
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 15,
+    fontSize: 14,
   },
   disabledBtn: {
     opacity: 0.58,

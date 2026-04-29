@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowRight, ChevronRight, Lock, ShoppingBag, Pencil, FileText } from 'lucide-react-native';
+import { ArrowRight, ChevronDown, ChevronRight, ChevronUp, Lock, ShoppingBag, Pencil, FileText } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Radii, Spacing } from '../../constants/theme';
 import { SafeScreen } from '../../components/layout/SafeScreen';
@@ -147,6 +147,7 @@ export function CartScreen() {
   const [suggestedProducts, setSuggestedProducts] = useState<SuggestedProduct[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [stockMap, setStockMap] = useState<Record<string, LiveStockState>>({});
+  const [showExploreMore, setShowExploreMore] = useState(false);
 
   const [loadedOnce, setLoadedOnce] = useState(false);
   useEffect(() => {
@@ -585,106 +586,120 @@ export function CartScreen() {
           </View>
         ))}
 
-        <View style={styles.suggestionHeaderRow}>
-          <Text style={[styles.sectionLabel, { color: t.textPrimary }]}>Suggested for you</Text>
-          <Text style={[styles.suggestionHint, { color: t.textSecondary }]}>Based on your cart</Text>
-        </View>
-        {loadingSuggestions ? (
-          <View style={styles.suggestionLoadingWrap}>
-            <ActivityIndicator size="small" color={t.textPrimary} />
-          </View>
-        ) : suggestedProducts.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.suggestionRow}
-          >
-            {suggestedProducts.map((product) => (
-              <View
-                key={product.id}
-                style={[styles.suggestionCard, cartCardShadow(), { backgroundColor: t.card, borderColor: t.divider }]}
-              >
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => onSuggestionPress(product)}
-                  style={styles.suggestionTapArea}
-                >
-                  <View style={[styles.suggestionImageWrap, { backgroundColor: t.chipBg }]}>
-                    {product.image ? (
-                      <Image source={{ uri: toAbsoluteAssetUrl(product.image) }} style={styles.suggestionImage} resizeMode="cover" />
-                    ) : (
-                      <ShoppingBag size={26} color={t.iconDefault} />
-                    )}
-                  </View>
-                  <View style={styles.suggestionBody}>
-                    <Text style={[styles.suggestionName, { color: t.textPrimary }]} numberOfLines={2}>
-                      {product.name}
-                    </Text>
-                    <View style={styles.suggestionPriceRow}>
-                      <Text style={[styles.suggestionPrice, { color: t.textPrimary }]}>{formatCurrency(product.price)}</Text>
-                      {product.originalPrice ? (
-                        <Text style={[styles.suggestionOldPrice, { color: t.placeholder }]}>
-                          {formatCurrency(product.originalPrice)}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {product.discountLabel ? (
-                      <View style={styles.suggestionBadge}>
-                        <Text style={styles.suggestionBadgeText} numberOfLines={1}>
-                          {product.discountLabel}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => onAddSuggestion(product)}
-                  style={[styles.suggestionAddBtn, { backgroundColor: t.textPrimary }]}
-                  activeOpacity={0.9}
-                >
-                  <Text style={[styles.suggestionAddText, { color: t.background }]}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        ) : (
-          <Text style={[styles.suggestionEmpty, { color: t.textSecondary }]}>
-            We will show relevant products here as your cart grows.
-          </Text>
-        )}
-
-        {/* Bloom & Gift Banner */}
-        <LinearGradient
-          colors={['#F4A895', '#E8927E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.bloomBanner}
+        <TouchableOpacity
+          style={[styles.exploreToggle, { backgroundColor: t.card, borderColor: t.border }]}
+          onPress={() => setShowExploreMore((prev) => !prev)}
+          activeOpacity={0.85}
         >
-          <Text style={styles.bloomTitle}>Bloom & Gift</Text>
-          <Text style={styles.bloomSub}>Fresh Floral Bouquets Daily</Text>
-        </LinearGradient>
+          <View style={styles.exploreToggleTextWrap}>
+            <Text style={[styles.exploreToggleTitle, { color: t.textPrimary }]}>Explore more options</Text>
+            <Text style={[styles.exploreToggleSub, { color: t.textSecondary }]}>Suggestions, banners and premium design shortcuts</Text>
+          </View>
+          {showExploreMore ? <ChevronUp size={18} color={t.textSecondary} /> : <ChevronDown size={18} color={t.textSecondary} />}
+        </TouchableOpacity>
 
-        {/* Design Cards */}
-        <View style={styles.designCardsRow}>
-          <TouchableOpacity style={[styles.designCard, cartCardShadow(), { backgroundColor: t.card }]} activeOpacity={0.85}>
-            <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
-              <ShoppingBag size={40} color={t.iconDefault} />
+        {showExploreMore ? (
+          <>
+            <View style={styles.suggestionHeaderRow}>
+              <Text style={[styles.sectionLabel, { color: t.textPrimary }]}>Suggested for you</Text>
+              <Text style={[styles.suggestionHint, { color: t.textSecondary }]}>Based on your cart</Text>
             </View>
-            <View style={[styles.designBtnExplore, { backgroundColor: t.textPrimary }]}>
-              <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>Explore Premium designs</Text>
-              <ArrowRight size={14} color={t.background} style={{ flexShrink: 0 }} />
+            {loadingSuggestions ? (
+              <View style={styles.suggestionLoadingWrap}>
+                <ActivityIndicator size="small" color={t.textPrimary} />
+              </View>
+            ) : suggestedProducts.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestionRow}
+              >
+                {suggestedProducts.map((product) => (
+                  <View
+                    key={product.id}
+                    style={[styles.suggestionCard, cartCardShadow(), { backgroundColor: t.card, borderColor: t.divider }]}
+                  >
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => onSuggestionPress(product)}
+                      style={styles.suggestionTapArea}
+                    >
+                      <View style={[styles.suggestionImageWrap, { backgroundColor: t.chipBg }]}>
+                        {product.image ? (
+                          <Image source={{ uri: toAbsoluteAssetUrl(product.image) }} style={styles.suggestionImage} resizeMode="cover" />
+                        ) : (
+                          <ShoppingBag size={24} color={t.iconDefault} />
+                        )}
+                      </View>
+                      <View style={styles.suggestionBody}>
+                        <Text style={[styles.suggestionName, { color: t.textPrimary }]} numberOfLines={2}>
+                          {product.name}
+                        </Text>
+                        <View style={styles.suggestionPriceRow}>
+                          <Text style={[styles.suggestionPrice, { color: t.textPrimary }]}>{formatCurrency(product.price)}</Text>
+                          {product.originalPrice ? (
+                            <Text style={[styles.suggestionOldPrice, { color: t.placeholder }]}>
+                              {formatCurrency(product.originalPrice)}
+                            </Text>
+                          ) : null}
+                        </View>
+                        {product.discountLabel ? (
+                          <View style={styles.suggestionBadge}>
+                            <Text style={styles.suggestionBadgeText} numberOfLines={1}>
+                              {product.discountLabel}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => onAddSuggestion(product)}
+                      style={[styles.suggestionAddBtn, { backgroundColor: t.textPrimary }]}
+                      activeOpacity={0.9}
+                    >
+                      <Text style={[styles.suggestionAddText, { color: t.background }]}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={[styles.suggestionEmpty, { color: t.textSecondary }]}>
+                We will show relevant products here as your cart grows.
+              </Text>
+            )}
+
+            <LinearGradient
+              colors={['#F4A895', '#E8927E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.bloomBanner}
+            >
+              <Text style={styles.bloomTitle}>Bloom & Gift</Text>
+              <Text style={styles.bloomSub}>Fresh Floral Bouquets Daily</Text>
+            </LinearGradient>
+
+            <View style={styles.designCardsRow}>
+              <TouchableOpacity style={[styles.designCard, cartCardShadow(), { backgroundColor: t.card }]} activeOpacity={0.85}>
+                <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
+                  <ShoppingBag size={36} color={t.iconDefault} />
+                </View>
+                <View style={[styles.designBtnExplore, { backgroundColor: t.textPrimary }]}>
+                  <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>Explore Premium designs</Text>
+                  <ArrowRight size={13} color={t.background} style={{ flexShrink: 0 }} />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.designCard, cartCardShadow(), { backgroundColor: t.card }]} activeOpacity={0.85}>
+                <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
+                  <ShoppingBag size={36} color={t.iconDefault} />
+                </View>
+                <View style={[styles.designBtnStart, { backgroundColor: t.textPrimary }]}>
+                  <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>Start design</Text>
+                  <ArrowRight size={13} color={t.background} style={{ flexShrink: 0 }} />
+                </View>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.designCard, cartCardShadow(), { backgroundColor: t.card }]} activeOpacity={0.85}>
-            <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
-              <ShoppingBag size={40} color={t.iconDefault} />
-            </View>
-            <View style={[styles.designBtnStart, { backgroundColor: t.textPrimary }]}>
-              <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>Start design</Text>
-              <ArrowRight size={14} color={t.background} style={{ flexShrink: 0 }} />
-            </View>
-          </TouchableOpacity>
-        </View>
+          </>
+        ) : null}
 
         <Text style={[styles.genuineNote, { color: t.textSecondary }]}>100% Secure Payment</Text>
 
@@ -844,10 +859,10 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: {
-    paddingTop: 8,
+    paddingTop: Spacing.xs,
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   stockAlert: {
     backgroundColor: '#FEF2F2',
@@ -871,14 +886,14 @@ const styles = StyleSheet.create({
   itemCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radii.section,
-    padding: Spacing.lg,
+    padding: Spacing.md,
   },
   topLinkRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: Spacing.md,
-    marginBottom: 8,
+    marginBottom: Spacing.xs,
   },
   editLink: {
     flexDirection: 'row',
@@ -907,8 +922,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   thumbWrap: {
-    width: 76,
-    height: 76,
+    width: 70,
+    height: 70,
     borderRadius: Radii.small,
     overflow: 'hidden',
   },
@@ -924,7 +939,7 @@ const styles = StyleSheet.create({
   },
   itemBody: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   productTitle: {
     fontFamily: 'Poppins_600SemiBold',
@@ -967,7 +982,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     color: Colors.textDark,
-    marginTop: Spacing.sm,
+  },
+  exploreToggle: {
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  exploreToggleTextWrap: {
+    flex: 1,
+    gap: 1,
+  },
+  exploreToggleTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  exploreToggleSub: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    lineHeight: 15,
   },
   addOnRow: {
     gap: Spacing.md,
@@ -998,6 +1036,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: Spacing.xs,
   },
   suggestionHint: {
     fontFamily: 'Poppins_400Regular',
@@ -1008,12 +1047,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   suggestionRow: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
     paddingVertical: 4,
     paddingRight: 2,
   },
   suggestionCard: {
-    width: 170,
+    width: 156,
     borderRadius: Radii.section,
     borderWidth: 1,
     overflow: 'hidden',
@@ -1023,7 +1062,7 @@ const styles = StyleSheet.create({
   },
   suggestionImageWrap: {
     width: '100%',
-    height: 100,
+    height: 90,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1033,9 +1072,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   suggestionBody: {
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingHorizontal: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
     gap: 4,
   },
   suggestionName: {
@@ -1070,10 +1109,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   suggestionAddBtn: {
-    marginHorizontal: 10,
-    marginBottom: 10,
-    borderRadius: 12,
-    paddingVertical: 8,
+    marginHorizontal: Spacing.sm,
+    marginBottom: Spacing.sm,
+    borderRadius: Radii.button,
+    paddingVertical: Spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1088,10 +1127,10 @@ const styles = StyleSheet.create({
   },
   bloomBanner: {
     borderRadius: Radii.section,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
     alignItems: 'center',
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   bloomTitle: {
     fontFamily: 'Poppins_700Bold',
@@ -1109,8 +1148,8 @@ const styles = StyleSheet.create({
   },
   designCardsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   designCard: {
     flex: 1,
@@ -1121,7 +1160,7 @@ const styles = StyleSheet.create({
   },
   designImgPlaceholder: {
     width: '100%',
-    height: 130,
+    height: 116,
     backgroundColor: '#F6F6F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1131,8 +1170,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000000',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
     gap: 4,
   },
   designBtnStart: {
@@ -1140,8 +1179,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000000',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
     gap: 4,
   },
   designBtnText: {
@@ -1155,13 +1194,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: Colors.textSecondary,
-    marginTop: Spacing.xs,
   },
   priceBlock: {
     backgroundColor: Colors.surface,
     borderRadius: Radii.section,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
+    padding: Spacing.md,
+    gap: Spacing.xs,
     ...Platform.select({
       ios: {
         shadowColor: Colors.black,
@@ -1221,8 +1259,8 @@ const styles = StyleSheet.create({
   agreementRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.md,
-    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   checkboxOuter: {
     width: 22,
@@ -1257,9 +1295,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     backgroundColor: TEAL_PRIMARY,
     borderRadius: Radii.button,
-    paddingVertical: Spacing.md,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
     minHeight: 44,
   },
   btnTealText: {
@@ -1290,7 +1328,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radii.section,
     padding: Spacing.md,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   couponInputRow: {
     flexDirection: 'row',

@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scroll: {
-    paddingTop: Spacing.xs,
+    paddingTop: Spacing.xxs,
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
@@ -397,9 +397,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radii.input,
     paddingHorizontal: Spacing.md,
-    minHeight: 42,
+    minHeight: 40,
     gap: 8,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   searchInput: {
     ...Typography.body,
@@ -409,27 +409,27 @@ const styles = StyleSheet.create({
   bannerWrap: {
     borderRadius: Radii.section,
     overflow: 'hidden',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   bannerImage: {
     width: '100%',
-    height: scale(152),
+    height: scale(138),
   },
   categoryRow: {
     gap: Spacing.sm,
     paddingRight: Spacing.sm,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   categoryItem: {
     alignItems: 'center',
-    gap: 6,
-    width: 78,
-    minHeight: 98,
+    gap: Spacing.xs,
+    width: 74,
+    minHeight: 90,
   },
   categoryCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     gap: 8,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
     paddingRight: 8,
   },
   filterChip: {
@@ -461,14 +461,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...Typography.subtitle,
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   recentRow: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   recentCard: {
-    width: 86,
-    height: 86,
+    width: 80,
+    height: 80,
     borderRadius: Radii.section,
     marginRight: 10,
     borderWidth: 1,
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.section,
     overflow: 'hidden',
     borderWidth: 1,
-    paddingBottom: 10,
+    paddingBottom: Spacing.sm,
     ...Platform.select({
       ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 10 },
       android: { elevation: 3 },
@@ -501,14 +501,14 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: '100%',
-    height: scale(135),
+    height: scale(122),
     borderTopLeftRadius: Radii.section,
     borderTopRightRadius: Radii.section,
   },
   productInfo: {
     paddingHorizontal: Spacing.sm,
-    paddingTop: Spacing.sm,
-    gap: 4,
+    paddingTop: Spacing.xs,
+    gap: Spacing.xxs,
   },
   productName: {
     ...Typography.caption,
