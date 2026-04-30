@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, ListRenderItem, StyleSheet, TouchableOpacity, ActivityIndicator, View, Text, Image } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { FlatList, ListRenderItem, StyleSheet, ActivityIndicator, View, Text } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SlidersHorizontal } from 'lucide-react-native';
-import { Colors, Spacing, scale } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { ProductCard } from '../../components/ui/ProductCard';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -12,14 +12,12 @@ import { useOrderStore } from '../../store/useOrderStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { Product } from '../../types';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, mergeProductImageCandidates, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, resolveProductImageSource, sortProducts } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { isCatalogProductInStock } from '../../utils/stock';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'StationeryList'>;
 type Route = RouteProp<HomeStackParamList, 'StationeryList'>;
-
-const IMG_CATEGORY_BANNER = require('../../../assets/images/shop-notebooks.png');
 
 function normalizeCategoryValue(value: any): string {
   return String(value || '')
@@ -90,20 +88,39 @@ function isShoppingRootCategory(rawCategory?: string, routeCategoryName?: string
   return keys.some((key) => key === 'shopping' || key === 'shop');
 }
 
+function extractProductItems(payload: any): any[] {
+  const directPools = [payload?.products, payload?.data, payload?.items, payload?.results, payload?.rows, payload];
+
+  for (const pool of directPools) {
+    if (Array.isArray(pool)) {
+      return pool.filter((item) => item && typeof item === 'object');
+    }
+
+    if (pool && typeof pool === 'object') {
+      const nestedPools = [pool.products, pool.data, pool.items, pool.results, pool.rows];
+      for (const nested of nestedPools) {
+        if (Array.isArray(nested)) {
+          return nested.filter((item) => item && typeof item === 'object');
+        }
+      }
+    }
+  }
+
+  return [];
+}
+
 export function StationeryListScreen() {
   const { colors: t } = useThemeStore();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const category = route.params?.category;
   const routeCategoryName = route.params?.categoryName;
-  const routeBannerImage = route.params?.bannerImage;
 
   const toggleWishlist = useOrderStore((s) => s.toggleWishlist);
   const isWishlisted = useOrderStore((s) => s.isWishlisted);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [resolvedTitle, setResolvedTitle] = useState(routeCategoryName || 'Products');
-  const [bannerUri, setBannerUri] = useState<string | null>(routeBannerImage || null);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -111,29 +128,23 @@ export function StationeryListScreen() {
       productsApi.getShoppingProducts({ limit: 80 }),
       category ? productsApi.getShoppingProducts({ category, limit: 80 }).catch(() => null) : Promise.resolve(null),
       productsApi.getShoppingCategories().catch(() => []),
-      productsApi.getShoppingHome().catch(() => null),
     ])
-      .then(([allRes, filteredRes, categories, home]) => {
+      .then(([allRes, filteredRes, categories]) => {
         const matchedCategory = (categories || []).find((item: any) => (
-          item?.slug === category ||
-          item?._id === category ||
-          String(item?.name || '').toLowerCase() === String(category || '').toLowerCase()
+          item?.slug === category
+          || item?._id === category
+          || String(item?.name || '').toLowerCase() === String(category || '').toLowerCase()
         ));
-        const nextTitle =
-          routeCategoryName ||
-          matchedCategory?.name ||
-          (category ? category.replace(/[-_]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'Products');
-        const homeBanner = (home?.banners || []).find((item: any) => item?.image)?.image;
-        const nextBanner =
-          routeBannerImage ||
-          (matchedCategory?.image ? toAbsoluteAssetUrl(matchedCategory.image) : null) ||
-          (homeBanner ? toAbsoluteAssetUrl(homeBanner) : null);
-        setResolvedTitle(nextTitle);
-        setBannerUri(nextBanner);
 
-        const allRawItems = allRes?.products || allRes?.data || (Array.isArray(allRes) ? allRes : []);
-        const filteredRawItems =
-          filteredRes?.products || filteredRes?.data || (Array.isArray(filteredRes) ? filteredRes : []);
+        const nextTitle =
+          routeCategoryName
+          || matchedCategory?.name
+          || (category ? category.replace(/[-_]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()) : 'Products');
+
+        setResolvedTitle(nextTitle);
+
+        const allRawItems = extractProductItems(allRes);
+        const filteredRawItems = extractProductItems(filteredRes);
         const allItems = sortProducts(dedupeProducts(allRawItems));
         const useRootShoppingList = isShoppingRootCategory(category, routeCategoryName, matchedCategory);
         const filteredFromAll = useRootShoppingList
@@ -146,43 +157,41 @@ export function StationeryListScreen() {
         ));
 
         return Promise.all((items || []).map(async (p: any) => {
+          if (!p || typeof p !== 'object') return null;
+
           const productId = String(p?._id || p?.id || '').trim();
           const listFallback = allItems.find((item: any) => String(item?._id || item?.id || '').trim() === productId) || p;
           const detailProduct = productId ? await productsApi.getShoppingProduct(productId).catch(() => null) : null;
-          const source = detailProduct || p;
+          const source = detailProduct || listFallback || p;
           const pricing = resolveProductPricing(source);
-          const imageCandidates = mergeProductImageCandidates(source, p, listFallback);
-          const imageUri =
-            imageCandidates[0] ||
-            getProductImageUrl(listFallback) ||
-            getProductImageUrl(p) ||
-            (matchedCategory?.image ? toAbsoluteAssetUrl(matchedCategory.image) : '') ||
-            (homeBanner ? toAbsoluteAssetUrl(homeBanner) : '');
+          const { imageUri, imageCandidates } = resolveProductImageSource(source, p, listFallback);
+          const mappedId = String(source?._id || source?.id || p?._id || p?.id || '').trim();
+
+          if (!mappedId) return null;
+
           return {
-            id: source._id || source.id || p._id || p.id,
-            name: source.name || p.name,
-            description: source.description || p.description || '',
+            id: mappedId,
+            name: String(source?.name || p?.name || 'Product'),
+            description: String(source?.description || p?.description || ''),
             ...pricing,
             discountLabel: pricing.discountLabel,
             image: imageUri,
-            thumbnail: imageCandidates[0] || imageUri,
+            thumbnail: imageUri,
             images: imageCandidates,
-            category: typeof source.category === 'string' ? source.category : source.category?.slug || '',
+            category:
+              typeof source?.category === 'string'
+                ? source.category
+                : String(source?.category?.slug || source?.category?.name || ''),
             inStock: isCatalogProductInStock(source),
           };
         })).then((mappedItems) => {
-          const mapped = mappedItems
-            .filter((p: Product) => Boolean(p.id));
+          const mapped = mappedItems.filter((item): item is Product => Boolean(item?.id));
           setProducts(dedupeProducts(mapped));
         });
       })
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
-  }, [category, routeBannerImage, routeCategoryName]));
-
-  const bannerSource = useMemo(() => (
-    bannerUri ? { uri: bannerUri } : IMG_CATEGORY_BANNER
-  ), [bannerUri]);
+  }, [category, routeCategoryName]));
 
   const onProductPress = useCallback(
     (item: Product) => {
@@ -225,14 +234,6 @@ export function StationeryListScreen() {
         }
       />
 
-      <View style={[styles.bannerWrap, { borderColor: t.border, backgroundColor: t.card }]}>
-        <Image source={bannerSource} style={styles.bannerImage} resizeMode="cover" />
-        <View style={styles.bannerOverlay}>
-          <Text style={styles.bannerEyebrow}>CATEGORY</Text>
-          <Text style={styles.bannerTitle} numberOfLines={2}>{resolvedTitle}</Text>
-        </View>
-      </View>
-
       {loading ? (
         <ActivityIndicator size="large" color={t.textPrimary} style={{ marginTop: 40 }} />
       ) : products.length === 0 ? (
@@ -272,41 +273,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 60,
-  },
-  bannerWrap: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-  },
-  bannerImage: {
-    width: '100%',
-    height: scale(118),
-  },
-  bannerOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    backgroundColor: 'rgba(17, 24, 39, 0.16)',
-  },
-  bannerEyebrow: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 10,
-    letterSpacing: 2,
-    color: '#FFF5ED',
-    marginBottom: 4,
-  },
-  bannerTitle: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 19,
-    lineHeight: 24,
-    color: '#FFFFFF',
-    maxWidth: '72%',
   },
   emptyText: {
     fontFamily: 'Poppins_500Medium',

@@ -19,7 +19,7 @@ import { Spacing, scale } from '../../constants/theme';
 import { HomeTabStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, mergeProductImageCandidates, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, resolveProductImageSource, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
 import { extractSearchItems, rankSearchResults } from '../../utils/search';
 import { resolveProductPricing } from '../../utils/pricing';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -57,6 +57,42 @@ function resolveShoppingCategoryImage(category: any): ImageSourcePropType | unde
   const rawImage = String(category?.image || '').trim();
   if (!rawImage) return undefined;
   return { uri: toAbsoluteAssetUrl(rawImage) } as ImageSourcePropType;
+}
+
+function extractProductItems(payload: any): any[] {
+  const directPools = [payload?.products, payload?.data, payload?.items, payload?.results, payload?.rows, payload];
+
+  for (const pool of directPools) {
+    if (Array.isArray(pool)) {
+      return pool.filter((item) => item && typeof item === 'object');
+    }
+
+    if (pool && typeof pool === 'object') {
+      const nestedPools = [pool.products, pool.data, pool.items, pool.results, pool.rows];
+      for (const nested of nestedPools) {
+        if (Array.isArray(nested)) {
+          return nested.filter((item) => item && typeof item === 'object');
+        }
+      }
+    }
+  }
+
+  return [];
+}
+
+function mapShoppingProductForCard(p: any): ProductItem {
+  const { imageUri, imageCandidates } = resolveProductImageSource(p);
+  const { price, originalPrice, discountLabel } = resolveProductPricing(p);
+
+  return {
+    id: String(p?._id || p?.id || '').trim(),
+    name: p?.name || 'Product',
+    price,
+    originalPrice,
+    discount: discountLabel,
+    image: imageUri ? { uri: imageUri } : IMG_NOTEBOOKS,
+    imageCandidates,
+  };
 }
 
 function ShoppingProductImage({
@@ -151,33 +187,18 @@ export function ShopByCategoryScreen() {
           bannerFromHome?.image ? toAbsoluteAssetUrl(bannerFromHome.image) : null,
         );
 
-        const mapP = (p: any): ProductItem => {
-          const imageCandidates = mergeProductImageCandidates(p);
-          const thumb = imageCandidates[0] || getProductImageUrl(p);
-          const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-          return {
-            id: p._id || p.id,
-            name: p.name || 'Product',
-            price,
-            originalPrice,
-            discount: discountLabel,
-            image: thumb ? { uri: thumb } : IMG_NOTEBOOKS,
-            imageCandidates,
-          };
-        };
-
-        const listItemsRaw: any[] = listRes?.products || listRes?.data || (Array.isArray(listRes) ? listRes : []);
+        const listItemsRaw: any[] = extractProductItems(listRes);
         const listItems = sortProducts(dedupeProducts(listItemsRaw));
         const featuredRaw: any[] = home?.featured_products?.length ? home.featured_products : listItems;
         const trendingRaw: any[] = home?.trending_products?.length ? home.trending_products : listItems;
         const featured = sortProducts(dedupeProducts(featuredRaw));
         const trending = sortProducts(dedupeProducts(trendingRaw));
-        const mappedTrending = dedupeProducts(trending.map(mapP)).filter((p) => Boolean(p.id));
-        const mappedFeatured = dedupeProducts(featured.map(mapP)).filter((p) => Boolean(p.id));
+        const mappedTrending = dedupeProducts(trending.map(mapShoppingProductForCard)).filter((p) => Boolean(p.id));
+        const mappedFeatured = dedupeProducts(featured.map(mapShoppingProductForCard)).filter((p) => Boolean(p.id));
         const usedIds = new Set<string>();
         const uniqueRecent = takeUniqueById(mappedTrending, usedIds, 4);
         const uniqueArrivals = takeUniqueById(mappedFeatured, usedIds);
-        const searchPool = dedupeProducts(listItems.map(mapP)).filter((p) => Boolean(p.id));
+        const searchPool = dedupeProducts(listItems.map(mapShoppingProductForCard)).filter((p) => Boolean(p.id));
 
         setApiRecent(uniqueRecent);
         setApiArrivals(uniqueArrivals);
@@ -238,20 +259,8 @@ export function ShopByCategoryScreen() {
       productsApi.searchShopping({ q: query, limit: 20 })
         .then((response) => {
           if (!active) return;
-          const mappedRemote = dedupeProducts(extractSearchItems<any>(response).map((p: any) => {
-            const imageCandidates = mergeProductImageCandidates(p);
-            const thumb = imageCandidates[0] || getProductImageUrl(p);
-            const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-            return {
-              id: p._id || p.id,
-              name: p.name || 'Product',
-              price,
-              originalPrice,
-              discount: discountLabel,
-              image: thumb ? { uri: thumb } : IMG_NOTEBOOKS,
-              imageCandidates,
-            };
-          })).filter((p: ProductItem) => Boolean(p.id));
+          const mappedRemote = dedupeProducts(extractSearchItems<any>(response).map(mapShoppingProductForCard))
+            .filter((p: ProductItem) => Boolean(p.id));
           const merged = dedupeProducts([...mappedRemote, ...searchPool]).filter((p) => Boolean(p.id));
           setSearchResults(rankSearchResults(merged, query, 30));
         })
