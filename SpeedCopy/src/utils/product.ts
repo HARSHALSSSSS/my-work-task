@@ -51,17 +51,57 @@ export function toAbsoluteAssetUrl(url?: string | null): string {
   return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
 }
 
-function pickFirstImageCandidate(input: any): string {
-  if (!input) return '';
-  if (typeof input === 'string') return input;
+const INVALID_IMAGE_VALUES = new Set([
+  '',
+  'undefined',
+  'null',
+  'nan',
+  'none',
+  'n/a',
+  'na',
+  'false',
+  'true',
+  '[object object]',
+]);
+
+function sanitizeImageCandidate(input: any): string {
+  if (typeof input !== 'string') return '';
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+  const lower = trimmed.toLowerCase();
+  if (INVALID_IMAGE_VALUES.has(lower)) return '';
+  if (lower.startsWith('javascript:')) return '';
+  return trimmed;
+}
+
+function isProbablyValidImageUrl(input: string): boolean {
+  const lower = String(input || '').toLowerCase();
+  if (!lower) return false;
+  if (lower.includes('/uploads/undefined') || lower.includes('/uploads/null')) return false;
+  if (lower.endsWith('/uploads') || lower.endsWith('/uploads/')) return false;
+  return true;
+}
+
+function pickFirstImageCandidate(input: any, depth = 0, seen?: WeakSet<object>): string {
+  if (!input || depth > 4) return '';
+
+  if (typeof input === 'string') {
+    return sanitizeImageCandidate(input);
+  }
+
   if (Array.isArray(input)) {
     for (const entry of input) {
-      const picked = pickFirstImageCandidate(entry);
+      const picked = pickFirstImageCandidate(entry, depth + 1, seen);
       if (picked) return picked;
     }
     return '';
   }
+
   if (typeof input === 'object') {
+    const tracked = seen || new WeakSet<object>();
+    if (tracked.has(input)) return '';
+    tracked.add(input);
+
     const direct = [
       input.url,
       input.uri,
@@ -71,72 +111,143 @@ function pickFirstImageCandidate(input: any): string {
       input.secure_url,
       input.original,
       input.optimized,
+      input.thumbnail,
+      input.thumbnailUrl,
+      input.thumbnail_url,
+      input.thumb,
+      input.thumbUrl,
+      input.thumb_url,
+      input.imageUrl,
+      input.imageURL,
+      input.image_url,
+      input.featuredImage,
+      input.mainImage,
+      input.preview,
+      input.previewImage,
+      input.preview_url,
+      input.fileUrl,
+      input.asset,
     ];
+
     for (const value of direct) {
-      if (typeof value === 'string' && value.trim()) return value;
+      const picked = sanitizeImageCandidate(value);
+      if (picked) return picked;
+    }
+
+    const nested = [
+      input.images,
+      input.media,
+      input.gallery,
+      input.files,
+      input.attachments,
+      input.variants,
+      input.variant,
+      input.options,
+      input.product,
+      input.item,
+      input.data,
+      input.payload,
+      input.result,
+      input.node,
+      input.productData,
+      input.product_data,
+      input.productDetails,
+      input.product_details,
+    ];
+
+    for (const value of nested) {
+      const picked = pickFirstImageCandidate(value, depth + 1, tracked);
+      if (picked) return picked;
     }
   }
+
   return '';
 }
 
 export function getProductImageCandidates(product: any): string[] {
   if (!product) return [];
+
   const resolved: string[] = [];
+
   const pushCandidate = (candidate: any) => {
     const picked = pickFirstImageCandidate(candidate);
     if (!picked) return;
+
     const absolute = toAbsoluteAssetUrl(picked);
-    if (!absolute || resolved.includes(absolute)) return;
+    if (!absolute || !isProbablyValidImageUrl(absolute) || resolved.includes(absolute)) return;
+
     resolved.push(absolute);
   };
+
   const candidates = [
     product?.thumbnail?.url,
     product?.thumbnail?.uri,
     product?.thumbnail?.src,
     product?.thumbnail?.path,
+    product?.thumbnail,
     product?.product?.thumbnail,
     product?.product?.image,
     product?.product?.images,
     product?.product?.media,
     product?.product?.gallery,
+    product?.product?.variants,
     product?.item?.thumbnail,
     product?.item?.image,
     product?.item?.images,
+    product?.item?.variants,
     product?.orderItem?.thumbnail,
     product?.orderItem?.image,
     product?.orderItem?.images,
+    product?.orderItem?.variants,
     product?.thumbnailUrl,
     product?.thumbnail_url,
     product?.thumb,
     product?.thumbUrl,
     product?.thumb_url,
-    product.thumbnail,
-    product.image,
-    product.imageUrl,
-    product.imageURL,
-    product.image_url,
-    product.featuredImage,
-    product.featured_image,
-    product.mainImage,
-    product.main_image,
-    product.poster,
-    product.banner,
-    product.preview,
-    product.previewImage,
-    product.preview_image,
-    product.fileUrl,
-    product.file_url,
-    product.asset,
-    product.images,
-    product.media,
-    product.gallery,
-    product.files,
-    product.attachments,
-    product.product,
+    product?.coverImage,
+    product?.cover_image,
+    product?.heroImage,
+    product?.hero_image,
+    product?.image,
+    product?.imageUrl,
+    product?.imageURL,
+    product?.image_url,
+    product?.featuredImage,
+    product?.featured_image,
+    product?.mainImage,
+    product?.main_image,
+    product?.poster,
+    product?.banner,
+    product?.preview,
+    product?.previewImage,
+    product?.preview_image,
+    product?.fileUrl,
+    product?.file_url,
+    product?.asset,
+    product?.images,
+    product?.media,
+    product?.gallery,
+    product?.files,
+    product?.attachments,
+    product?.variants,
+    product?.variant,
+    product?.option,
+    product?.options,
+    product?.product,
+    product?.item,
+    product?.data,
+    product?.payload,
+    product?.result,
+    product?.productData,
+    product?.product_data,
+    product?.productDetails,
+    product?.product_details,
   ];
+
   for (const candidate of candidates) {
     pushCandidate(candidate);
   }
+
   return resolved;
 }
 
@@ -152,6 +263,14 @@ export function mergeProductImageCandidates(...sources: any[]): string[] {
   }
 
   return merged;
+}
+
+export function resolveProductImageSource(...sources: any[]): { imageUri: string; imageCandidates: string[] } {
+  const imageCandidates = mergeProductImageCandidates(...sources);
+  return {
+    imageUri: imageCandidates[0] || '',
+    imageCandidates,
+  };
 }
 
 export function getProductImageUrl(product: any): string {

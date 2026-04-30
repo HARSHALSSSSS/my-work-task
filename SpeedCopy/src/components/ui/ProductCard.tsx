@@ -5,7 +5,7 @@ import { Colors, Typography, Radii, Shadows, Spacing } from '../../constants/the
 import { useThemeStore } from '../../store/useThemeStore';
 import { Product } from '../../types';
 import { formatPrice } from '../../utils/formatCurrency';
-import { getProductImageCandidates, toAbsoluteAssetUrl } from '../../utils/product';
+import { resolveProductImageSource } from '../../utils/product';
 
 interface ProductCardProps {
   product: Product;
@@ -23,12 +23,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   compact = false,
 }) => {
   const { colors: t } = useThemeStore();
-  const imageCandidates = React.useMemo(() => {
-    const candidates = getProductImageCandidates(product);
-    if (candidates.length > 0) return candidates;
-    const fallback = toAbsoluteAssetUrl(product.image);
-    return fallback ? [fallback] : [];
-  }, [product]);
+  const imageCandidates = React.useMemo(() => resolveProductImageSource(product).imageCandidates, [product]);
   const [imageIndex, setImageIndex] = React.useState(0);
   React.useEffect(() => {
     setImageIndex(0);
