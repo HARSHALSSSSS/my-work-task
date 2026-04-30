@@ -136,6 +136,7 @@ function ProfileNavigator() {
 
 const DEFAULT_ACTIVE = '#000000';
 const INACTIVE_BLACK = '#000000';
+const DARK_NAV_TEXT = '#FFFFFF';
 const SERVICE_ACCENT: Record<'printing' | 'gifting' | 'shopping', string> = {
   printing: '#4CA1AF',
   gifting: '#FF7EB3',
@@ -372,23 +373,25 @@ function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   };
 
   const serviceAccent = SERVICE_ACCENT[serviceMode];
-  const itemColor = (isFocused: boolean) => (isFocused ? serviceAccent : INACTIVE_BLACK);
+  const defaultTextColor = themeMode === 'dark' ? DARK_NAV_TEXT : INACTIVE_BLACK;
+  const activeItemColor = themeMode === 'dark' ? DARK_NAV_TEXT : serviceAccent;
+  const itemColor = (isFocused: boolean) => (isFocused ? activeItemColor : defaultTextColor);
   const switchGlassStyle = {
-    backgroundColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.24)' : 'rgba(255, 255, 255, 0.88)',
-    borderColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: themeMode === 'dark' ? 'rgba(22, 24, 29, 0.94)' : 'rgba(255, 255, 255, 0.88)',
+    borderColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.95)',
   };
   const navGlassStyle = {
-    backgroundColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.84)',
-    borderColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: themeMode === 'dark' ? 'rgba(18, 20, 25, 0.96)' : 'rgba(255, 255, 255, 0.84)',
+    borderColor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.95)',
   };
   const navGlassGradient = themeMode === 'dark'
-    ? (['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.02)'] as const)
+    ? (['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.01)'] as const)
     : (['rgba(214,229,247,0.2)', 'rgba(184,206,232,0.07)'] as const);
   const navTopHighlight = themeMode === 'dark'
-    ? (['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.01)'] as const)
+    ? (['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.0)'] as const)
     : (['rgba(255,255,255,0.34)', 'rgba(255,255,255,0.0)'] as const);
   const switchTopHighlight = themeMode === 'dark'
-    ? (['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.0)'] as const)
+    ? (['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.0)'] as const)
     : (['rgba(255,255,255,0.0)', 'rgba(255,255,255,0.0)'] as const);
   const blurTint = themeMode === 'dark' ? 'dark' : 'default';
   const navBlurIntensity = themeMode === 'dark' ? 58 : 54;
@@ -414,8 +417,8 @@ function BottomNavBar({ state, navigation }: BottomTabBarProps) {
           pointerEvents="none"
         />
         <View style={tabStyles.switchContent}>
-          <HomeLogoIcon color={DEFAULT_ACTIVE} size={22} />
-          <Text style={tabStyles.switchLabel} allowFontScaling={false}>Switch</Text>
+          <HomeLogoIcon color={defaultTextColor} size={22} />
+          <Text style={[tabStyles.switchLabel, { color: defaultTextColor }]} allowFontScaling={false}>Switch</Text>
         </View>
       </TouchableOpacity>
 
@@ -448,11 +451,11 @@ function BottomNavBar({ state, navigation }: BottomTabBarProps) {
           ]}
           onPress={onPressService}
         >
-          {getCategoryIcon(serviceMode, serviceIconSize, serviceAlwaysHighlighted ? '#FFFFFF' : DEFAULT_ACTIVE)}
+          {getCategoryIcon(serviceMode, serviceIconSize, serviceAlwaysHighlighted ? '#FFFFFF' : defaultTextColor)}
           <Text
             style={[
               tabStyles.serviceLabel,
-              { color: serviceAlwaysHighlighted ? '#FFFFFF' : DEFAULT_ACTIVE },
+              { color: serviceAlwaysHighlighted ? '#FFFFFF' : defaultTextColor },
             ]}
             allowFontScaling={false}
             numberOfLines={1}
