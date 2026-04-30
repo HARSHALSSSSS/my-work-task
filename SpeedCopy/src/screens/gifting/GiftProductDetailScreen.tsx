@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
   ImageSourcePropType,
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -33,6 +34,7 @@ import { getProductImageUrl, isLikelyMongoId, toAbsoluteAssetUrl } from '../../u
 import { resolveProductPricing } from '../../utils/pricing';
 import { getLiveStockState, LiveStockState } from '../../utils/stock';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { shareProduct } from '../../utils/shareProduct';
 
 type FlowType = 'printing' | 'gifting' | 'shopping';
 
@@ -234,6 +236,20 @@ export function GiftProductDetailScreen() {
     setQuantity(Math.max(1, Math.min(999, Number(cleaned))));
   }, []);
 
+  const handleShareProduct = useCallback(async () => {
+    try {
+      await shareProduct({
+        productId,
+        productName: product.name,
+        flowType,
+        price: product.price,
+        imageUrl: selectedGalleryUri || imageUri || product.imageUri,
+      });
+    } catch {
+      Alert.alert('Unable to share', 'Please try again in a moment.');
+    }
+  }, [flowType, imageUri, product.imageUri, product.name, product.price, productId, selectedGalleryUri]);
+
   return (
     <SafeScreen>
       {/* Header */}
@@ -288,7 +304,9 @@ export function GiftProductDetailScreen() {
         <View style={styles.infoSection}>
           <View style={styles.nameRow}>
             <Text style={[styles.productName, { color: t.textPrimary }]}>{product.name}</Text>
-            <Link2 size={16} color={t.placeholder} />
+            <TouchableOpacity onPress={handleShareProduct} hitSlop={10}>
+              <Link2 size={16} color={t.placeholder} />
+            </TouchableOpacity>
           </View>
         <View style={styles.priceRow}>
             <Text style={[styles.price, { color: t.textPrimary }]}>{formatCurrency(product.price)}</Text>

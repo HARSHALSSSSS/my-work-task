@@ -36,6 +36,8 @@ export const CustomColorDescriptionScreen: React.FC = () => {
       deliveryMode: params.deliveryMode,
       locationId: params.locationId,
       servicePackage: params.servicePackage,
+      pickupEtaLabel: params.pickupEtaLabel,
+      pickupLocationTitle: params.pickupLocationTitle,
       customColorDescription: trimmedDescription,
     });
   };

@@ -330,6 +330,8 @@ export const StandardPrintingScreen: React.FC = () => {
   const deliveryMode = params.deliveryMode || 'delivery';
   const locationId = params.locationId;
   const selectedServicePackage = params.servicePackage || 'standard';
+  const pickupEtaLabel = params.pickupEtaLabel || '';
+  const pickupLocationTitle = params.pickupLocationTitle || '';
   const backendPrintType = PRINT_TYPE_BY_SUB_SERVICE[subService];
   const addItem = useCartStore((s) => s.addItem);
   const { colors: t } = useThemeStore();
@@ -903,8 +905,20 @@ export const StandardPrintingScreen: React.FC = () => {
       deliveryMode,
       locationId,
       servicePackage: selectedServicePackage,
+      pickupEtaLabel,
+      pickupLocationTitle,
     });
-  }, [customColorDescription, deliveryMode, locationId, navigation, route.key, selectedServicePackage, subService]);
+  }, [
+    customColorDescription,
+    deliveryMode,
+    locationId,
+    navigation,
+    pickupEtaLabel,
+    pickupLocationTitle,
+    route.key,
+    selectedServicePackage,
+    subService,
+  ]);
 
   return (
     <SafeScreen>
@@ -924,6 +938,18 @@ export const StandardPrintingScreen: React.FC = () => {
       >
         <Text style={[styles.heading, { color: t.textPrimary }]}>{serviceTitle}</Text>
         <Text style={[styles.subheading, { color: t.textSecondary }]}>Upload your file, configure options and proceed to cart.</Text>
+
+        {deliveryMode === 'pickup' ? (
+          <View style={[styles.pickupEtaCard, { borderColor: t.border, backgroundColor: t.card }]}> 
+            <Text style={[styles.pickupEtaTitle, { color: t.textPrimary }]}>Pickup ready time</Text>
+            <Text style={[styles.pickupEtaValue, { color: '#0F766E' }]}>{pickupEtaLabel || 'Ready in 2 hours'}</Text>
+            {pickupLocationTitle ? (
+              <Text style={[styles.pickupEtaSub, { color: t.textSecondary }]} numberOfLines={1}>
+                Selected location: {pickupLocationTitle}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <TouchableOpacity
           style={[styles.uploadBox, { borderColor: t.border, backgroundColor: t.card }]}
@@ -1181,6 +1207,25 @@ const styles = StyleSheet.create({
     ...Typography.bodySm,
     marginBottom: Spacing.md,
     marginTop: Spacing.xxs,
+  },
+  pickupEtaCard: {
+    borderWidth: 1,
+    borderRadius: Radii.section,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.sm,
+    gap: 2,
+  },
+  pickupEtaTitle: {
+    ...Typography.caption,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  pickupEtaValue: {
+    ...Typography.bodyBold,
+    fontFamily: 'Poppins_700Bold',
+  },
+  pickupEtaSub: {
+    ...Typography.caption,
   },
   uploadBox: {
     alignItems: 'center',
