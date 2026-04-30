@@ -534,7 +534,7 @@ export function GiftStoreScreen() {
 
               <HeroBannerCarousel
                 slides={heroBannerSlides}
-                height={scale(182)}
+                height={scale(194)}
                 gap={10}
                 style={styles.heroBannerWrap}
                 cardStyle={[styles.heroBannerCard, { backgroundColor: t.card, borderColor: t.border }]}
