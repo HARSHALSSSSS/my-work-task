@@ -30,6 +30,11 @@ const IMG_DELIVERY_FAST = require('../../../assets/images/gift-delivery-fast.png
 const IMG_DELIVERY_MIDNIGHT = require('../../../assets/images/gift-delivery-midnight.png');
 const IMG_GIFT_BANNER_PRIMARY = require('../../../assets/images/gift-best-roses.png');
 const IMG_GIFT_BANNER_SECONDARY = require('../../../assets/images/gift-best-tulips.png');
+const IMG_CAT_BIRTHDAY = require('../../../assets/images/gift-cat-birthday.png');
+const IMG_CAT_ANNIVERSARY = require('../../../assets/images/gift-cat-anniversary.png');
+const IMG_CAT_CHOCOLATE = require('../../../assets/images/gift-cat-chocolate.png');
+const IMG_CAT_WEDDING = require('../../../assets/images/gift-cat-wedding.png');
+const IMG_CAT_CELEBRATION = require('../../../assets/images/gift-cat-celebration.png');
 const IMG_PROD_MUG = require('../../../assets/images/gift-prod-mug.png');
 
 type CatItem = {
@@ -37,31 +42,44 @@ type CatItem = {
   label: string;
   color: string;
   image?: ImageSourcePropType;
+  fallbackImage?: ImageSourcePropType;
   categoryParam?: string;
 };
 
 type ProductItem = {
-  id: string; name: string; price: number;
-  originalPrice?: number; discount?: string;
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  discount?: string;
   image: ImageSourcePropType;
   imageCandidates?: string[];
   fallbackImage?: ImageSourcePropType;
 };
 
-type DeliveryCard = { id: string; label: string; image: ImageSourcePropType };
+type DeliveryCard = { id: string; label: string; image: ImageSourcePropType; subtitle: string };
 const DELIVERY_CARDS: DeliveryCard[] = [
-  { id: 'd1', label: 'Fast Delivery', image: IMG_DELIVERY_FAST },
-  { id: 'd2', label: 'Midnight Delivery', image: IMG_DELIVERY_MIDNIGHT },
+  { id: 'd1', label: 'Fast Delivery', subtitle: 'Within hours', image: IMG_DELIVERY_FAST },
+  { id: 'd2', label: 'Midnight Delivery', subtitle: '12 AM surprise', image: IMG_DELIVERY_MIDNIGHT },
 ];
 
 const CATEGORY_LIMIT = 8;
 
-function shadow(elevation = 3) {
+function shadow(elevation = 2) {
   return Platform.select({
-    ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.1, shadowRadius: 12 },
-    android: { elevation: elevation + 1 },
+    ios: { shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.09, shadowRadius: 10 },
+    android: { elevation },
     default: {},
   });
+}
+
+function resolveCategoryFallbackImage(label: string): ImageSourcePropType {
+  const key = String(label || '').toLowerCase();
+  if (key.includes('birthday')) return IMG_CAT_BIRTHDAY;
+  if (key.includes('anniversary')) return IMG_CAT_ANNIVERSARY;
+  if (key.includes('chocolate')) return IMG_CAT_CHOCOLATE;
+  if (key.includes('wedding')) return IMG_CAT_WEDDING;
+  return IMG_CAT_CELEBRATION;
 }
 
 function GiftStoreProductImage({
@@ -105,7 +123,7 @@ function GiftStoreProductImage({
 
   return (
     <View style={[style, styles.productImageFallback, { backgroundColor: placeholderColor }]}>
-      <Gift size={34} color={iconColor} />
+      <Gift size={28} color={iconColor} />
     </View>
   );
 }
@@ -124,7 +142,7 @@ export function GiftStoreScreen() {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const openingCategoryId: string | null = null;
+  const [failedCategoryImages, setFailedCategoryImages] = useState<Record<string, boolean>>({});
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -164,13 +182,17 @@ export function GiftStoreScreen() {
 
         const mappedCategories = (categories || [])
           .filter((c: any) => c?.isActive !== false)
-          .map((c: any, idx: number) => ({
-            id: c._id || c.slug || c.name,
-            label: c.name || 'Category',
-            color: palette[idx % palette.length],
-            image: c.image ? ({ uri: toAbsoluteAssetUrl(c.image) } as ImageSourcePropType) : undefined,
-            categoryParam: c.slug || c._id || c.name,
-          }))
+          .map((c: any, idx: number) => {
+            const label = c.name || 'Category';
+            return {
+              id: c._id || c.slug || c.name,
+              label,
+              color: palette[idx % palette.length],
+              image: c.image ? ({ uri: toAbsoluteAssetUrl(c.image) } as ImageSourcePropType) : undefined,
+              fallbackImage: resolveCategoryFallbackImage(label),
+              categoryParam: c.slug || c._id || c.name,
+            };
+          })
           .filter((c: CatItem) => {
             const key = String(c.id || '');
             if (!key || categorySeen.has(key)) return false;
@@ -202,7 +224,6 @@ export function GiftStoreScreen() {
         const recentPool = mapPoolProducts(recentPoolRaw);
         const allProductsPool = dedupeProducts(enrichedProducts);
 
-        // Keep sections mutually exclusive so one product appears once per page.
         const usedIds = new Set<string>();
         const bestSellers = takeUniqueById(bestSellersPool, usedIds);
         const newArrivals = takeUniqueById(newArrivalsPool, usedIds);
@@ -326,15 +347,55 @@ export function GiftStoreScreen() {
     };
   }, [search, searchPool, mapSearchProduct]);
 
+  const renderProductCard = (item: ProductItem, variant: 'grid' | 'rail' = 'grid') => {
+    const isGrid = variant === 'grid';
+
+    return (
+      <TouchableOpacity
+        key={`${variant}-${item.id}`}
+        style={[
+          isGrid ? styles.gridProductCard : styles.railProductCard,
+          shadow(isGrid ? 2 : 1),
+          { backgroundColor: t.card, borderColor: t.border },
+        ]}
+        activeOpacity={0.88}
+        onPress={() => onProductPress(item)}
+      >
+        <GiftStoreProductImage
+          item={item}
+          style={isGrid ? styles.gridProductImage : styles.railProductImage}
+          placeholderColor={t.chipBg}
+          iconColor={t.placeholder}
+        />
+        <View style={styles.productMeta}>
+          <Text style={[styles.productName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
+          <View style={styles.priceRow}>
+            <Text style={[styles.productPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
+            {item.originalPrice ? (
+              <Text style={[styles.productOldPrice, { color: t.placeholder }]}>{formatCurrency(item.originalPrice)}</Text>
+            ) : null}
+            {item.discount ? (
+              <View style={[styles.discountBadge, { backgroundColor: t.badgeBg }]}>
+                <Text style={[styles.discountText, { color: mode === 'dark' ? '#83E49A' : '#00A63E' }]}>{item.discount}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const searchingState = search.trim().length > 0;
+
   return (
     <SafeScreen>
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()} hitSlop={12}>
-          <ChevronLeft size={24} color={t.iconDefault} />
+          <ChevronLeft size={22} color={t.iconDefault} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Gift Store</Text>
-        <TouchableOpacity style={[styles.headerIconBtn, styles.gridBtn, { borderColor: t.border }]} activeOpacity={0.7}>
-          <Grid2x2 size={18} color={t.textPrimary} />
+        <TouchableOpacity style={[styles.headerIconBtn, styles.gridBtn, { borderColor: t.border, backgroundColor: t.card }]} activeOpacity={0.7}>
+          <Grid2x2 size={17} color={t.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -357,52 +418,32 @@ export function GiftStoreScreen() {
         contentContainerStyle={styles.scroll}
         nestedScrollEnabled
       >
-
-        {/* Search */}
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { borderBottomColor: t.searchBorder }]}>
-            <Search size={18} color={t.placeholder} />
-            <TextInput
-              style={[styles.searchPlaceholder, { color: t.textPrimary }]}
-              placeholder="Search gifts"
-              placeholderTextColor={t.placeholder}
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-            />
-          </View>
+        <View style={[styles.searchWrap, { backgroundColor: t.card, borderColor: t.border }]}>
+          <Search size={17} color={t.placeholder} />
+          <TextInput
+            style={[styles.searchInput, { color: t.textPrimary }]}
+            placeholder="Search gifts"
+            placeholderTextColor={t.placeholder}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
         </View>
 
-        {search.trim() ? (
+        {searchingState ? (
           <>
-            <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Search Results</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Search results</Text>
+            </View>
             {searching ? (
               <View style={styles.inlineLoadingWrap}>
                 <ActivityIndicator size="small" color={t.textPrimary} />
               </View>
             ) : searchResults.length > 0 ? (
-              <View style={styles.catalogGrid}>
-                {searchResults.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
-                    activeOpacity={0.85}
-                    onPress={() => onProductPress(item)}
-                  >
-                    <GiftStoreProductImage
-                      item={item}
-                      style={styles.catalogImg}
-                      placeholderColor={t.chipBg}
-                      iconColor={t.placeholder}
-                    />
-                    <View style={styles.cardInfoWrap}>
-                      <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
-                      <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.productGrid}>
+                {searchResults.map((item) => renderProductCard(item, 'grid'))}
               </View>
             ) : (
               <View style={styles.emptyWrap}>
@@ -413,197 +454,130 @@ export function GiftStoreScreen() {
           </>
         ) : (
           <>
-        <View style={styles.categoryGrid}>
-          {displayCategories.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.catCard,
-                {
-                  backgroundColor: mode === 'dark' ? t.card : cat.color,
-                  borderColor: mode === 'dark' ? t.border : 'rgba(17,24,39,0.05)',
-                },
-              ]}
-              activeOpacity={0.82}
-              onPress={() => onCategoryPress(cat)}
-            >
-              <View
-                style={[
-                  styles.catImgWrap,
-                  {
-                    backgroundColor: mode === 'dark' ? t.surface : '#FFFFFF',
-                    borderColor: mode === 'dark' ? t.border : 'rgba(17,24,39,0.05)',
-                  },
-                ]}
+            <View style={styles.topCluster}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryStrip}
+                nestedScrollEnabled
               >
-                {cat.image ? (
-                  <Image source={cat.image} style={styles.catImg} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.catImg, styles.catPlaceholder, { backgroundColor: mode === 'dark' ? t.surface : '#FFFFFF' }]}>
-                    <Grid2x2 size={16} color={t.placeholder} />
-                  </View>
-                )}
+                {displayCategories.map((cat) => {
+                  const categoryImage = failedCategoryImages[cat.id] ? cat.fallbackImage : (cat.image || cat.fallbackImage);
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryCard,
+                        {
+                          backgroundColor: mode === 'dark' ? t.card : cat.color,
+                          borderColor: mode === 'dark' ? t.border : 'rgba(17,24,39,0.08)',
+                        },
+                      ]}
+                      activeOpacity={0.86}
+                      onPress={() => onCategoryPress(cat)}
+                    >
+                      <View
+                        style={[
+                          styles.categoryThumb,
+                          {
+                            backgroundColor: mode === 'dark' ? t.surface : '#FFFFFF',
+                            borderColor: mode === 'dark' ? t.border : 'rgba(17,24,39,0.08)',
+                          },
+                        ]}
+                      >
+                        {categoryImage ? (
+                          <Image
+                            source={categoryImage}
+                            style={styles.categoryImg}
+                            resizeMode="cover"
+                            onError={() => setFailedCategoryImages((prev) => ({ ...prev, [cat.id]: true }))}
+                          />
+                        ) : (
+                          <View style={[styles.categoryImg, styles.catPlaceholder, { backgroundColor: mode === 'dark' ? t.surface : '#FFFFFF' }]}>
+                            <Grid2x2 size={14} color={t.placeholder} />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.categoryLabel, { color: t.textPrimary }]} numberOfLines={2}>{cat.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={[styles.primaryBannerCard, { backgroundColor: t.card, borderColor: t.border }]}>
+                <Image source={bannerUris[0] ? { uri: bannerUris[0] } : IMG_GIFT_BANNER_PRIMARY} style={styles.primaryBannerImage} resizeMode="cover" />
+                <View style={[styles.primaryBannerOverlay, { backgroundColor: mode === 'dark' ? 'rgba(8,10,16,0.32)' : 'rgba(70, 38, 45, 0.18)' }]}>
+                  <Text style={styles.primaryBannerKicker}>FEATURED</Text>
+                  <Text style={styles.primaryBannerTitle}>Bloom & Gift</Text>
+                  <Text style={styles.primaryBannerSub}>Premium bouquets and keepsakes for every celebration.</Text>
+                </View>
               </View>
-              {openingCategoryId === cat.id ? (
-                <ActivityIndicator size="small" color={t.textPrimary} style={styles.catLoading} />
-              ) : null}
-              <Text style={[styles.catLabel, { color: t.textPrimary }]} numberOfLines={2}>{cat.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Best Sellers */}
-        {displayBestSellers.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Best seller</Text>}
-        <View style={styles.catalogGrid}>
-          {displayBestSellers.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
-              activeOpacity={0.85}
-              onPress={() => onProductPress(item)}
-            >
-              <GiftStoreProductImage
-                item={item}
-                style={styles.catalogImg}
-                placeholderColor={t.chipBg}
-                iconColor={t.placeholder}
-              />
-              <View style={styles.cardInfoWrap}>
-                <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
-                <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Bloom & Gift Banner */}
-        <View style={styles.bannerWrap}>
-          <Image source={bannerUris[0] ? { uri: bannerUris[0] } : IMG_GIFT_BANNER_PRIMARY} style={styles.bannerImage} resizeMode="cover" />
-          <View style={[styles.bannerOverlay, { backgroundColor: mode === 'dark' ? 'rgba(18,18,18,0.38)' : 'rgba(255, 221, 223, 0.14)' }]}>
-            <Text style={[styles.bannerKicker, { color: mode === 'dark' ? '#F6D9D7' : '#83503D' }]}>FLOWER</Text>
-            <Text style={[styles.bannerTitle, { color: mode === 'dark' ? '#FFF5F3' : '#5B2C2F' }]}>Bloom & Gift</Text>
-            <Text style={[styles.bannerSub, { color: mode === 'dark' ? '#F0D9D4' : '#704A4C' }]}>Crafted bouquets and keepsakes for warm, memorable gifting.</Text>
-          </View>
-        </View>
-
-        {/* New Arrivals */}
-        {displayNewArrivals.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>New Arrivals</Text>}
-        <View style={styles.catalogGrid}>
-          {displayNewArrivals.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
-              activeOpacity={0.85}
-              onPress={() => onProductPress(item)}
-            >
-              <GiftStoreProductImage
-                item={item}
-                style={styles.catalogImg}
-                placeholderColor={t.chipBg}
-                iconColor={t.placeholder}
-              />
-              <View style={styles.cardInfoWrap}>
-                <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
-                <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Secondary Banner */}
-        <View style={styles.bannerWrap}>
-          <Image source={bannerUris[1] ? { uri: bannerUris[1] } : IMG_GIFT_BANNER_SECONDARY} style={styles.bannerImageLarge} resizeMode="cover" />
-        </View>
-
-        {/* Delivery Cards */}
-        <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Shop by delivery type</Text>
-        <View style={styles.deliveryRow}>
-          {DELIVERY_CARDS.map((d) => (
-            <View key={d.id} style={[styles.deliveryCard, { backgroundColor: t.card, borderColor: t.border }, shadow()]}>
-              <Image source={d.image} style={styles.deliveryImg} resizeMode="cover" />
-              <Text style={[styles.deliveryLabel, { color: t.textPrimary }]}>{d.label}</Text>
             </View>
-          ))}
-        </View>
 
-        {/* Recently Viewed */}
-        {displayRecent.length > 0 && (
-          <View style={styles.recentHeader}>
-            <Text style={[styles.sectionTitleCompact, { color: t.textPrimary }]}>Recently Viewed</Text>
-            <Clock3 size={15} color={t.placeholder} />
-          </View>
-        )}
-        <View style={styles.catalogGrid}>
-          {displayRecent.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.catalogCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
-              activeOpacity={0.85}
-              onPress={() => onProductPress(item)}
-            >
-              <GiftStoreProductImage
-                item={item}
-                style={styles.catalogImg}
-                placeholderColor={t.chipBg}
-                iconColor={t.placeholder}
-              />
-              <View style={styles.cardInfoWrap}>
-                <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
-                <View style={styles.priceRow}>
-                  <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
-                  {item.originalPrice && (
-                    <Text style={[styles.oldPrice, { color: t.placeholder }]}>{formatCurrency(item.originalPrice)}</Text>
-                  )}
-                  {item.discount && (
-                    <View style={styles.discountBadge}>
-                      <Text style={styles.discountText}>{item.discount}</Text>
-                    </View>
-                  )}
-                </View>
+            {displayBestSellers.length > 0 ? (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Best sellers</Text>
               </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ) : null}
+            <View style={styles.productGrid}>
+              {displayBestSellers.map((item) => renderProductCard(item, 'grid'))}
+            </View>
 
-        {/* All Products */}
-        {displayAllProducts.length > 0 && <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>All Products</Text>}
-        {!loading && !loadError && !hasAnyProducts && (
-          <View style={styles.emptyWrap}>
-            <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No gift products yet</Text>
-            <Text style={[styles.emptySub, { color: t.textSecondary }]}>Check back soon for new arrivals.</Text>
-          </View>
-        )}
-        <View style={styles.allProductsGrid}>
-          {displayAllProducts.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.productCard, shadow(), { backgroundColor: t.card, borderColor: t.border }]}
-              activeOpacity={0.85}
-              onPress={() => onProductPress(item)}
-            >
-              <GiftStoreProductImage
-                item={item}
-                style={styles.productImg}
-                placeholderColor={t.chipBg}
-                iconColor={t.placeholder}
-              />
-              <View style={styles.cardInfoWrap}>
-                <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
-                <View style={styles.priceRow}>
-                  <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
-                  {item.originalPrice && (
-                    <Text style={[styles.oldPrice, { color: t.placeholder }]}>{formatCurrency(item.originalPrice)}</Text>
-                  )}
-                  {item.discount && (
-                    <View style={styles.discountBadge}>
-                      <Text style={styles.discountText}>{item.discount}</Text>
-                    </View>
-                  )}
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Shop by delivery type</Text>
+            </View>
+            <View style={styles.deliveryRow}>
+              {DELIVERY_CARDS.map((delivery) => (
+                <View
+                  key={delivery.id}
+                  style={[styles.deliveryCard, shadow(1), { backgroundColor: t.card, borderColor: t.border }]}
+                >
+                  <Image source={delivery.image} style={styles.deliveryImage} resizeMode="cover" />
+                  <View style={styles.deliveryMeta}>
+                    <Text style={[styles.deliveryLabel, { color: t.textPrimary }]}>{delivery.label}</Text>
+                    <Text style={[styles.deliverySub, { color: t.textSecondary }]}>{delivery.subtitle}</Text>
+                  </View>
                 </View>
+              ))}
+            </View>
+
+            <View style={[styles.secondaryBannerCard, { backgroundColor: t.card, borderColor: t.border }]}>
+              <Image source={bannerUris[1] ? { uri: bannerUris[1] } : IMG_GIFT_BANNER_SECONDARY} style={styles.secondaryBannerImage} resizeMode="cover" />
+            </View>
+
+            {displayNewArrivals.length > 0 ? (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>New arrivals</Text>
               </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ) : null}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productsRail} nestedScrollEnabled>
+              {displayNewArrivals.map((item) => renderProductCard(item, 'rail'))}
+            </ScrollView>
+
+            {displayRecent.length > 0 ? (
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Recently viewed</Text>
+                <Clock3 size={14} color={t.placeholder} />
+              </View>
+            ) : null}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productsRail} nestedScrollEnabled>
+              {displayRecent.map((item) => renderProductCard(item, 'rail'))}
+            </ScrollView>
+
+            {displayAllProducts.length > 0 ? (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>More to explore</Text>
+              </View>
+            ) : null}
+            {!loading && !loadError && !hasAnyProducts ? (
+              <View style={styles.emptyWrap}>
+                <Text style={[styles.emptyTitle, { color: t.textPrimary }]}>No gift products yet</Text>
+                <Text style={[styles.emptySub, { color: t.textSecondary }]}>Check back soon for new arrivals.</Text>
+              </View>
+            ) : null}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productsRail} nestedScrollEnabled>
+              {displayAllProducts.map((item) => renderProductCard(item, 'rail'))}
+            </ScrollView>
           </>
         )}
       </ScrollView>
@@ -613,99 +587,87 @@ export function GiftStoreScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingTop: 6,
-    paddingBottom: 100,
+    paddingTop: 2,
+    paddingBottom: 96,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingTop: 4,
-    paddingBottom: 10,
-    minHeight: 52,
-    gap: 10,
+    paddingBottom: 8,
+    minHeight: 48,
+    gap: 8,
   },
   headerIconBtn: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18.5,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 22,
     textAlign: 'center',
     flex: 1,
   },
   gridBtn: {
-    width: 34,
-    height: 34,
     borderRadius: 10,
     borderWidth: 1,
   },
-  searchRow: {
+  searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    gap: 10,
-    marginBottom: 14,
+    marginHorizontal: 14,
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    minHeight: 38,
+    marginBottom: 10,
   },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderBottomWidth: 1,
-    paddingHorizontal: 2,
-    minHeight: 44,
-    gap: 10,
-  },
-  searchPlaceholder: {
+  searchInput: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 14,
     paddingVertical: 0,
-    textAlignVertical: 'center',
-    includeFontPadding: false,
   },
   inlineLoadingWrap: {
     paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    rowGap: 10,
-    columnGap: 10,
-    paddingBottom: 16,
+  topCluster: {
+    marginBottom: 8,
   },
-  catCard: {
-    width: 92,
-    height: 96,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderWidth: 0.8,
-    borderColor: 'rgba(17,24,39,0.05)',
+  categoryStrip: {
+    paddingHorizontal: 14,
+    paddingTop: 2,
+    paddingBottom: 10,
+    gap: 8,
+    paddingRight: 18,
   },
-  catImgWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 4,
+  categoryCard: {
+    width: 84,
+    borderRadius: 12,
     borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    gap: 6,
   },
-  catImg: {
+  categoryThumb: {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
+    overflow: 'hidden',
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryImg: {
     width: '100%',
     height: '100%',
   },
@@ -713,194 +675,189 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catLabel: {
+  categoryLabel: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 10,
-    lineHeight: 12,
+    lineHeight: 13,
     textAlign: 'center',
   },
-  catLoading: {
-    marginBottom: 4,
-  },
-  bannerWrap: {
-    marginHorizontal: 10,
-    borderRadius: 12,
+  primaryBannerCard: {
+    marginHorizontal: 14,
+    borderRadius: 14,
     overflow: 'hidden',
-    marginBottom: 16,
-    marginTop: 4,
-    position: 'relative',
+    borderWidth: 1,
+    marginBottom: 10,
   },
-  bannerImage: {
+  primaryBannerImage: {
     width: '100%',
-    height: scale(144),
+    height: scale(112),
   },
-  bannerImageLarge: {
-    width: '100%',
-    height: scale(108),
-  },
-  bannerOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+  primaryBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  bannerKicker: {
+  primaryBannerKicker: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 10,
-    letterSpacing: 2.2,
+    letterSpacing: 1.8,
+    color: '#FEEFE8',
+    marginBottom: 1,
+  },
+  primaryBannerTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 19,
+    lineHeight: 22,
+    color: '#FFFFFF',
     marginBottom: 2,
   },
-  bannerTitle: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 20,
-    lineHeight: 24,
-    marginBottom: 4,
-  },
-  bannerSub: {
-    maxWidth: '62%',
+  primaryBannerSub: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 10.5,
     lineHeight: 14,
+    color: '#FFF5F3',
+    maxWidth: '66%',
+  },
+  sectionHeader: {
+    paddingHorizontal: 14,
+    marginBottom: 7,
+    marginTop: 3,
+  },
+  sectionHeaderRow: {
+    paddingHorizontal: 14,
+    marginBottom: 7,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
-    lineHeight: 20,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    marginTop: 2,
-    textTransform: 'none',
+    lineHeight: 19,
   },
-  sectionTitleCompact: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  catalogGrid: {
+  productGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    rowGap: 12,
-    columnGap: 10,
-    paddingBottom: 14,
+    paddingHorizontal: 14,
+    rowGap: 10,
+    columnGap: 9,
+    marginBottom: 8,
   },
-  catalogCard: {
-    width: '48%',
-    borderRadius: 6,
+  gridProductCard: {
+    width: '48.5%',
+    borderRadius: 11,
     overflow: 'hidden',
-    borderWidth: 0.8,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  catalogImg: {
-    width: '100%',
-    height: scale(126),
-  },
-  productImageFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardInfoName: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
-  cardInfoPrice: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12.5,
-  },
-  deliveryRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 14,
-  },
-  deliveryCard: {
-    flex: 1,
-    minWidth: 0,
-    borderRadius: 8,
-    overflow: 'hidden',
-    alignItems: 'center',
+    borderWidth: 1,
     paddingBottom: 8,
-    borderWidth: 0.8,
   },
-  deliveryImg: {
+  gridProductImage: {
     width: '100%',
-    height: scale(96),
+    height: scale(116),
   },
-  deliveryLabel: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
-    marginTop: 7,
+  productsRail: {
+    paddingHorizontal: 14,
+    paddingRight: 22,
+    paddingBottom: 10,
+    gap: 10,
   },
-  cardInfoWrap: {
+  railProductCard: {
+    width: 152,
+    borderRadius: 11,
+    overflow: 'hidden',
+    borderWidth: 1,
+    paddingBottom: 8,
+  },
+  railProductImage: {
+    width: '100%',
+    height: 104,
+  },
+  productMeta: {
     paddingHorizontal: 8,
     paddingTop: 7,
     gap: 3,
   },
+  productName: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 11.5,
+    lineHeight: 15,
+  },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     flexWrap: 'wrap',
-    marginTop: 1,
+    gap: 4,
   },
-  oldPrice: {
+  productPrice: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+  },
+  productOldPrice: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 9,
     textDecorationLine: 'line-through',
   },
   discountBadge: {
-    backgroundColor: '#E8F8EE',
+    borderRadius: 999,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 999,
   },
   discountText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 8,
-    color: '#00A63E',
   },
-  recentHeader: {
+  deliveryRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    marginTop: 2,
+    paddingHorizontal: 14,
+    gap: 9,
+    marginBottom: 11,
   },
-  allProductsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    rowGap: 12,
-    columnGap: 10,
-    paddingBottom: 20,
-  },
-  productCard: {
-    width: '48%',
-    borderRadius: 6,
+  deliveryCard: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 0.8,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
   },
-  productImg: {
+  deliveryImage: {
     width: '100%',
-    height: scale(130),
+    height: scale(84),
   },
-  loadingWrap: { paddingVertical: 60, alignItems: 'center' },
-  errorWrap: { paddingVertical: 40, paddingHorizontal: Spacing.lg, alignItems: 'center', gap: 6 },
+  deliveryMeta: {
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    gap: 2,
+  },
+  deliveryLabel: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+  },
+  deliverySub: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 9.5,
+  },
+  secondaryBannerCard: {
+    marginHorizontal: 14,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  secondaryBannerImage: {
+    width: '100%',
+    height: scale(88),
+  },
+  productImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingWrap: { paddingVertical: 52, alignItems: 'center' },
+  errorWrap: { paddingVertical: 34, paddingHorizontal: Spacing.lg, alignItems: 'center', gap: 6 },
   errorText: { fontFamily: 'Poppins_600SemiBold', fontSize: 15 },
   errorSub: { fontFamily: 'Poppins_400Regular', fontSize: 12, textAlign: 'center' },
-  emptyWrap: { paddingVertical: 40, paddingHorizontal: Spacing.lg, alignItems: 'center', gap: 6 },
-  emptyTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 16 },
+  emptyWrap: { paddingVertical: 32, paddingHorizontal: Spacing.lg, alignItems: 'center', gap: 6 },
+  emptyTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 15 },
   emptySub: { fontFamily: 'Poppins_400Regular', fontSize: 12, textAlign: 'center' },
 });
-
