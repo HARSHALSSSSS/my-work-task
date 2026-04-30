@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, ActivityIndicator,
@@ -11,6 +11,7 @@ import { PrintStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useOrderStore } from '../../store/useOrderStore';
 import * as productsApi from '../../api/products';
+import { resolvePickupEtaLabel } from '../../utils/pickupEta';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'Location'>;
 type Route = RouteProp<PrintStackParamList, 'Location'>;
@@ -20,12 +21,20 @@ type LocationItem = {
   title: string;
   address: string;
   pincode: string;
+  etaLabel: string;
 };
+
+function getPickupFallbackEta(servicePackage?: string): string {
+  const normalized = String(servicePackage || '').trim().toLowerCase();
+  if (normalized.includes('instant')) return 'Ready in 45 min';
+  if (normalized.includes('express')) return 'Ready in 1.5 hours';
+  return 'Ready in 2 hours';
+}
 
 export const LocationScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { subService, deliveryMode, servicePackage } = route.params;
+  const { subService, deliveryMode, servicePackage, pickupEtaLabel } = route.params;
   const { colors: t } = useThemeStore();
   const { fetchAddresses } = useOrderStore();
   const [query, setQuery] = useState('');
@@ -63,6 +72,7 @@ export const LocationScreen: React.FC = () => {
               title,
               address: [addressParts.join(', '), pincode].filter(Boolean).join(' - '),
               pincode,
+              etaLabel: resolvePickupEtaLabel(loc, pickupEtaLabel || getPickupFallbackEta(servicePackage)),
             };
           })
           .filter((loc) => Boolean(loc.id && loc.address));
@@ -70,7 +80,7 @@ export const LocationScreen: React.FC = () => {
       })
       .catch(() => setLocations([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [pickupEtaLabel, servicePackage]);
 
   const filtered = React.useMemo(
     () => (activePincode ? locations.filter((location) => location.pincode === activePincode) : locations),
@@ -87,14 +97,16 @@ export const LocationScreen: React.FC = () => {
     return 'No pickup locations available right now.';
   })();
 
-  const onLocationSelect = (locationId: string) => {
+  const onLocationSelect = useCallback((location: LocationItem) => {
     navigation.navigate('StandardPrinting', {
       subService,
       deliveryMode,
-      locationId,
+      locationId: location.id,
       servicePackage,
+      pickupEtaLabel: location.etaLabel,
+      pickupLocationTitle: location.title,
     });
-  };
+  }, [deliveryMode, navigation, servicePackage, subService]);
 
   return (
     <SafeScreen>
@@ -142,10 +154,11 @@ export const LocationScreen: React.FC = () => {
               activePincode && location.pincode === activePincode ? styles.locationItemActive : null,
             ]}
             activeOpacity={0.7}
-            onPress={() => onLocationSelect(location.id)}
+            onPress={() => onLocationSelect(location)}
           >
             <Text style={[styles.locationTitle, { color: t.textPrimary }]}>{location.title}</Text>
             <Text style={[styles.locationText, { color: t.textSecondary }]}>{location.address}</Text>
+            <Text style={styles.locationEta}>{location.etaLabel}</Text>
           </TouchableOpacity>
         ))}
         {!loading && filtered.length === 0 && (
@@ -225,6 +238,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
     lineHeight: 20,
+  },
+  locationEta: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#0F766E',
+    marginTop: 6,
   },
   emptyWrap: {
     paddingHorizontal: 16,

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, ListRenderItem, StyleSheet, ActivityIndicator, View, Text } from 'react-native';
+import { FlatList, ListRenderItem, StyleSheet, ActivityIndicator, View, Text, Image } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SlidersHorizontal } from 'lucide-react-native';
@@ -18,6 +18,10 @@ import { isCatalogProductInStock } from '../../utils/stock';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'StationeryList'>;
 type Route = RouteProp<HomeStackParamList, 'StationeryList'>;
+
+const FALLBACK_STATIONERY_IMAGE_URI = Image.resolveAssetSource(
+  require('../../../assets/images/shop-notebooks.png'),
+)?.uri || '';
 
 function normalizeCategoryValue(value: any): string {
   return String(value || '')
@@ -169,15 +173,24 @@ export function StationeryListScreen() {
 
           if (!mappedId) return null;
 
+          const mergedImageCandidates = Array.from(
+            new Set([
+              ...imageCandidates,
+              imageUri,
+              FALLBACK_STATIONERY_IMAGE_URI,
+            ].filter(Boolean)),
+          );
+          const resolvedCardImage = mergedImageCandidates[0] || FALLBACK_STATIONERY_IMAGE_URI;
+
           return {
             id: mappedId,
             name: String(source?.name || p?.name || 'Product'),
             description: String(source?.description || p?.description || ''),
             ...pricing,
             discountLabel: pricing.discountLabel,
-            image: imageUri,
-            thumbnail: imageUri,
-            images: imageCandidates,
+            image: resolvedCardImage,
+            thumbnail: resolvedCardImage,
+            images: mergedImageCandidates,
             category:
               typeof source?.category === 'string'
                 ? source.category

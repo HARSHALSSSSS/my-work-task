@@ -27,12 +27,16 @@ export type HomeTabStackParamList = {
     subService: PrintingSubService;
     deliveryMode: 'pickup' | 'delivery';
     servicePackage?: 'standard' | 'express' | 'instant';
+    pickupEtaLabel?: string;
+    pickupLocationTitle?: string;
   };
   StandardPrinting: {
     subService: PrintingSubService;
     deliveryMode?: 'pickup' | 'delivery';
     locationId?: string;
     servicePackage?: 'standard' | 'express' | 'instant';
+    pickupEtaLabel?: string;
+    pickupLocationTitle?: string;
     customColorDescription?: string;
     initialFileName?: string;
     initialFileUri?: string;
@@ -69,6 +73,8 @@ export type HomeTabStackParamList = {
     deliveryMode?: 'pickup' | 'delivery';
     locationId?: string;
     servicePackage?: 'standard' | 'express' | 'instant';
+    pickupEtaLabel?: string;
+    pickupLocationTitle?: string;
   };
   PrintStore: undefined;
   BusinessShopByCategory: {
