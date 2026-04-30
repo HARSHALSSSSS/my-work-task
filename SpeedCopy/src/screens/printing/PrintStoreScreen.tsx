@@ -29,7 +29,7 @@ type Nav = NativeStackNavigationProp<PrintStackParamList, 'PrintStore'>;
 const IMG_BUSINESS_CARDS = require('../../../assets/images/print-business-cards.png');
 const IMG_PRINT_BANNER = require('../../../assets/images/print-cat-business.png');
 const IMG_PRINT_SECONDARY = require('../../../assets/images/print-cat-flyers.png');
-const IMG_PRINT_BANNER_FALLBACK = require('../../../assets/images/print-business-cards.png');
+const IMG_PRINT_BANNER_FALLBACK = require('../../../assets/image 2.png');
 
 type Category = { id: string; label: string; image?: ImageSourcePropType };
 

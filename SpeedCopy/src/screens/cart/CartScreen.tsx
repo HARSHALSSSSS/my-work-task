@@ -16,8 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowRight, ChevronDown, ChevronRight, ChevronUp, Lock, ShoppingBag, Pencil, FileText } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ChevronDown, ChevronRight, ChevronUp, Lock, ShoppingBag, Pencil, FileText } from 'lucide-react-native';
 import { Colors, Radii, Spacing } from '../../constants/theme';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 
@@ -753,7 +752,7 @@ export function CartScreen() {
         >
           <View style={styles.exploreToggleTextWrap}>
             <Text style={[styles.exploreToggleTitle, { color: t.textPrimary }]}>Explore more options</Text>
-            <Text style={[styles.exploreToggleSub, { color: t.textSecondary }]}>Suggestions, banners and premium design shortcuts</Text>
+            <Text style={[styles.exploreToggleSub, { color: t.textSecondary }]}>Suggested products based on your cart</Text>
           </View>
           {showExploreMore ? <ChevronUp size={18} color={t.textSecondary} /> : <ChevronDown size={18} color={t.textSecondary} />}
         </TouchableOpacity>
@@ -825,37 +824,6 @@ export function CartScreen() {
                 We will show relevant products here as your cart grows.
               </Text>
             )}
-
-            <LinearGradient
-              colors={['#F4A895', '#E8927E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.bloomBanner}
-            >
-              <Text style={styles.bloomTitle}>Bloom & Gift</Text>
-              <Text style={styles.bloomSub}>Fresh Floral Bouquets Daily</Text>
-            </LinearGradient>
-
-            <View style={styles.designCardsRow}>
-              <TouchableOpacity style={[styles.designCard, cartCardShadow(), { backgroundColor: t.card }]} activeOpacity={0.85}>
-                <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
-                  <ShoppingBag size={36} color={t.iconDefault} />
-                </View>
-                <View style={[styles.designBtnExplore, { backgroundColor: t.textPrimary }]}>
-                  <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>Explore Premium designs</Text>
-                  <ArrowRight size={13} color={t.background} style={{ flexShrink: 0 }} />
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.designCard, cartCardShadow(), { backgroundColor: t.card }]} activeOpacity={0.85}>
-                <View style={[styles.designImgPlaceholder, { backgroundColor: t.chipBg }]}>
-                  <ShoppingBag size={36} color={t.iconDefault} />
-                </View>
-                <View style={[styles.designBtnStart, { backgroundColor: t.textPrimary }]}>
-                  <Text style={[styles.designBtnText, { color: t.background }]} numberOfLines={1}>Start design</Text>
-                  <ArrowRight size={13} color={t.background} style={{ flexShrink: 0 }} />
-                </View>
-              </TouchableOpacity>
-            </View>
           </>
         ) : null}
 

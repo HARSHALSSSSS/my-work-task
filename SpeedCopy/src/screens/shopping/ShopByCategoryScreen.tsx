@@ -26,7 +26,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 
 type Nav = NativeStackNavigationProp<HomeTabStackParamList, 'ShopByCategory'>;
 
-const IMG_BANNER = require('../../../assets/images/print-business-cards.png');
+const IMG_BANNER = require('../../../assets/image 2.png');
 const IMG_NOTEBOOKS = require('../../../assets/images/shop-notebooks.png');
 
 type CatItem = { id: string; label: string; categoryParam: string; imageSource?: ImageSourcePropType };
