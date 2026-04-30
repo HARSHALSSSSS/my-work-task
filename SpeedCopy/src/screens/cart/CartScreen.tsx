@@ -28,7 +28,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { CartItem } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { resolveProductPricing } from '../../utils/pricing';
-import { dedupeProducts, getProductImageCandidates, getProductImageUrl, inferFlowTypeFromItemId, mergeProductImageCandidates, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, inferFlowTypeFromItemId, resolveProductImageSource, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { fetchCartStockMap, LiveStockState } from '../../utils/stock';
 import * as cartApi from '../../api/cart';
 import * as productsApi from '../../api/products';
@@ -55,6 +55,7 @@ type SuggestedProduct = {
   discountLabel?: string;
   image?: string;
   imageCandidates?: string[];
+  imageKey?: string;
 };
 
 type AppliedCoupon = {
@@ -151,8 +152,7 @@ function mapProductToSuggestion(product: any, fallbackFlow: SuggestionFlow): Sug
       ? incomingFlow
       : fallbackFlow;
   const { price, originalPrice, discountLabel } = resolveSuggestionPrice(product);
-  const imageCandidates = getProductImageCandidates(product);
-  const image = imageCandidates[0] || getProductImageUrl(product);
+  const { imageUri, imageCandidates, imageKey } = resolveProductImageSource(product);
 
   return {
     id,
@@ -161,8 +161,9 @@ function mapProductToSuggestion(product: any, fallbackFlow: SuggestionFlow): Sug
     price,
     originalPrice,
     discountLabel,
-    image: image || undefined,
+    image: imageUri || undefined,
     imageCandidates,
+    imageKey,
   };
 }
 
@@ -174,18 +175,19 @@ function mapSuggestionFromSources(
   const suggestion = mapProductToSuggestion(primaryProduct, fallbackFlow);
   if (!suggestion) return null;
 
-  const imageCandidates = mergeProductImageCandidates(primaryProduct, ...extraSources);
+  const { imageUri, imageCandidates, imageKey } = resolveProductImageSource(primaryProduct, ...extraSources);
   return {
     ...suggestion,
     imageCandidates,
-    image: imageCandidates[0] || suggestion.image,
+    image: imageUri || suggestion.image,
+    imageKey,
   };
 }
 
 async function enrichSuggestionProduct(product: any, fallbackFlow: SuggestionFlow): Promise<SuggestedProduct | null> {
   const initial = mapSuggestionFromSources(product, fallbackFlow);
   if (!initial?.id) return null;
-  if (initial.imageCandidates?.length) return initial;
+  if ((initial.imageCandidates?.length || 0) > 1) return initial;
 
   try {
     let detailProduct: any = null;
@@ -211,15 +213,20 @@ function SuggestionImage({
   backgroundColor: string;
   iconColor: string;
 }) {
-  const candidates = React.useMemo(
-    () => (product.imageCandidates?.length ? product.imageCandidates : product.image ? [toAbsoluteAssetUrl(product.image)] : []),
-    [product.image, product.imageCandidates],
+  const fallbackResolved = React.useMemo(
+    () => resolveProductImageSource({ image: product.image }),
+    [product.image],
   );
+  const candidates = React.useMemo(
+    () => (product.imageCandidates?.length ? product.imageCandidates : fallbackResolved.imageCandidates),
+    [fallbackResolved.imageCandidates, product.imageCandidates],
+  );
+  const candidateKey = product.imageKey || candidates.join('|');
   const [imageIndex, setImageIndex] = React.useState(0);
 
   React.useEffect(() => {
     setImageIndex(0);
-  }, [product.id, product.image, product.imageCandidates]);
+  }, [product.id, candidateKey]);
 
   const activeImage = candidates[imageIndex];
 
