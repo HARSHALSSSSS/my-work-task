@@ -28,7 +28,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { CartItem } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { resolveProductPricing } from '../../utils/pricing';
-import { dedupeProducts, getProductImageCandidates, getProductImageUrl, inferFlowTypeFromItemId, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageCandidates, getProductImageUrl, inferFlowTypeFromItemId, mergeProductImageCandidates, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { fetchCartStockMap, LiveStockState } from '../../utils/stock';
 import * as cartApi from '../../api/cart';
 import * as productsApi from '../../api/products';
@@ -55,6 +55,14 @@ type SuggestedProduct = {
   discountLabel?: string;
   image?: string;
   imageCandidates?: string[];
+};
+
+type AppliedCoupon = {
+  code: string;
+  discount: number;
+  finalTotal: number;
+  subtotal: number;
+  flowType?: SuggestionFlow;
 };
 
 const SUGGESTION_LIMIT = 8;
@@ -112,6 +120,27 @@ function resolveSuggestionPrice(product: any): { price: number; originalPrice?: 
   return resolveProductPricing(product);
 }
 
+function normalizeCouponResult(
+  response: any,
+  fallbackCode: string,
+  subtotal: number,
+  flowType?: SuggestionFlow,
+): AppliedCoupon {
+  const discount = Math.max(0, Number(response?.discount ?? 0) || 0);
+  const finalTotalRaw = Number(response?.finalTotal);
+  const finalTotal = Number.isFinite(finalTotalRaw)
+    ? Math.max(0, finalTotalRaw)
+    : Math.max(0, subtotal - discount);
+
+  return {
+    code: String(response?.couponCode || fallbackCode).trim() || fallbackCode,
+    discount,
+    finalTotal,
+    subtotal,
+    flowType,
+  };
+}
+
 function mapProductToSuggestion(product: any, fallbackFlow: SuggestionFlow): SuggestedProduct | null {
   const id = String(product?._id || product?.id || '').trim();
   if (!id) return null;
@@ -135,6 +164,42 @@ function mapProductToSuggestion(product: any, fallbackFlow: SuggestionFlow): Sug
     image: image || undefined,
     imageCandidates,
   };
+}
+
+function mapSuggestionFromSources(
+  primaryProduct: any,
+  fallbackFlow: SuggestionFlow,
+  ...extraSources: any[]
+): SuggestedProduct | null {
+  const suggestion = mapProductToSuggestion(primaryProduct, fallbackFlow);
+  if (!suggestion) return null;
+
+  const imageCandidates = mergeProductImageCandidates(primaryProduct, ...extraSources);
+  return {
+    ...suggestion,
+    imageCandidates,
+    image: imageCandidates[0] || suggestion.image,
+  };
+}
+
+async function enrichSuggestionProduct(product: any, fallbackFlow: SuggestionFlow): Promise<SuggestedProduct | null> {
+  const initial = mapSuggestionFromSources(product, fallbackFlow);
+  if (!initial?.id) return null;
+  if (initial.imageCandidates?.length) return initial;
+
+  try {
+    let detailProduct: any = null;
+    if (initial.flowType === 'shopping') {
+      detailProduct = await productsApi.getShoppingProduct(initial.id).catch(() => null);
+    } else if (initial.flowType === 'gifting') {
+      detailProduct = await productsApi.getGiftingProduct(initial.id).catch(() => null);
+    } else {
+      detailProduct = await productsApi.getBusinessPrintProduct(initial.id).catch(() => null);
+    }
+    return mapSuggestionFromSources(detailProduct || product, initial.flowType, product);
+  } catch {
+    return initial;
+  }
 }
 
 function SuggestionImage({
@@ -198,7 +263,7 @@ export function CartScreen() {
   const [couponCode, setCouponCode] = useState('');
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
 
   const subtotal = useMemo(() => getTotal(), [getTotal, items]);
   const dominantCartFlow = useMemo<SuggestionFlow>(() => {
@@ -227,6 +292,10 @@ export function CartScreen() {
     () => Array.from(cartProductIds).sort().join('|'),
     [cartProductIds],
   );
+  const couponFlowType = useMemo<SuggestionFlow | undefined>(() => {
+    const unique = Array.from(new Set(items.map((item) => getCartFlowType(item))));
+    return unique.length === 1 ? unique[0] : undefined;
+  }, [items]);
 
   const discountAmount = appliedCoupon?.discount ?? 0;
   const taxGst = 0;
@@ -243,17 +312,8 @@ export function CartScreen() {
     setApplyingCoupon(true);
     setCouponError(null);
     try {
-      const firstItem = items[0];
-      const flowType = firstItem
-        ? (firstItem.flowType
-          || (firstItem.type === 'printing'
-            ? 'printing'
-            : firstItem.type === 'gifting'
-              ? 'gifting'
-              : inferFlowTypeFromItemId(firstItem.id)))
-        : undefined;
-      const res = await cartApi.applyCoupon(code, subtotal, flowType);
-      setAppliedCoupon({ code: res.couponCode || code, discount: res.discount || 0 });
+      const res = await cartApi.applyCoupon(code, subtotal, couponFlowType);
+      setAppliedCoupon(normalizeCouponResult(res, code, subtotal, couponFlowType));
     } catch (e: any) {
       const msg = e?.serverMessage || e?.response?.data?.message || e?.message || 'Could not apply coupon.';
       setCouponError(msg);
@@ -261,13 +321,41 @@ export function CartScreen() {
     } finally {
       setApplyingCoupon(false);
     }
-  }, [applyingCoupon, couponCode, items, subtotal]);
+  }, [applyingCoupon, couponCode, couponFlowType, subtotal]);
 
   const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
     setCouponCode('');
     setCouponError(null);
   }, []);
+
+  useEffect(() => {
+    if (!appliedCoupon?.code) return;
+    if (items.length === 0) {
+      setAppliedCoupon(null);
+      return;
+    }
+    if (appliedCoupon.subtotal === subtotal && appliedCoupon.flowType === couponFlowType) return;
+
+    let active = true;
+    setCouponError(null);
+
+    cartApi.applyCoupon(appliedCoupon.code, subtotal, couponFlowType)
+      .then((res) => {
+        if (!active) return;
+        setAppliedCoupon(normalizeCouponResult(res, appliedCoupon.code, subtotal, couponFlowType));
+      })
+      .catch((e: any) => {
+        if (!active) return;
+        const msg = e?.serverMessage || e?.response?.data?.message || e?.message || 'Coupon is no longer valid for this cart.';
+        setAppliedCoupon(null);
+        setCouponError(msg);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [appliedCoupon?.code, appliedCoupon?.flowType, appliedCoupon?.subtotal, couponFlowType, items.length, subtotal]);
 
   useEffect(() => {
     let active = true;
@@ -309,8 +397,9 @@ export function CartScreen() {
           rawProducts = [...extractProductList(businessRes), ...extractProductList(genericRes)];
         }
 
-        const mapped = sortProducts(dedupeProducts(rawProducts))
-          .map((p) => mapProductToSuggestion(p, dominantCartFlow))
+        const uniqueRaw = sortProducts(dedupeProducts(rawProducts));
+        const enriched = await Promise.all(uniqueRaw.map((p) => enrichSuggestionProduct(p, dominantCartFlow)));
+        const mapped = enriched
           .filter((p): p is SuggestedProduct => Boolean(p))
           .filter((p) => !cartProductIds.has(p.id))
           .slice(0, SUGGESTION_LIMIT);

@@ -357,9 +357,20 @@ export function PaymentMethodScreen() {
         backendOrder = await ordersApi.createOrder(orderBody);
       }
 
+      const backendSubtotal = Number(backendOrder.subtotal);
+      const backendDiscount = Math.max(0, Number(backendOrder.discount ?? couponDiscount) || 0);
+      const backendDeliveryCharge = Math.max(0, Number(backendOrder.deliveryCharge ?? deliveryFee) || 0);
+      const backendTotalRaw = Number(backendOrder.total);
+      const backendTotal = Number.isFinite(backendTotalRaw)
+        ? Math.max(0, backendTotalRaw)
+        : Math.max(
+            0,
+            (Number.isFinite(backendSubtotal) ? backendSubtotal : basePrice) - backendDiscount + backendDeliveryCharge,
+          );
+
       const paymentResp = await paymentsApi.createPayment({
         orderId: backendOrder._id,
-        amount: totalPayable,
+        amount: backendTotal,
         method,
       });
 
@@ -374,7 +385,7 @@ export function PaymentMethodScreen() {
           orderNumber: backendOrder.orderNumber,
           status: 'processing',
           items: items.map((i) => ({ ...i })),
-          total: totalPayable,
+          total: backendTotal,
           date: new Date().toISOString().slice(0, 10),
           address: address || {
             id: `pickup-${pickupShopIdForOrder || 'store'}`,
@@ -410,7 +421,7 @@ export function PaymentMethodScreen() {
       setPendingOrder(backendOrder);
       setRzpOptions({
         keyId: paymentResp.keyId,
-        amount: normalizeDisplayAmount(paymentResp.amount, totalPayable),
+        amount: normalizeDisplayAmount(paymentResp.amount, backendTotal),
         currency: paymentResp.currency || 'INR',
         orderId: paymentResp.razorpayOrderId,
         name: 'SpeedCopy',
@@ -445,7 +456,7 @@ export function PaymentMethodScreen() {
       orderNumber: backendOrder.orderNumber,
       status: 'processing',
       items: items.map((i) => ({ ...i })),
-      total: totalPayable,
+      total: Number.isFinite(Number(backendOrder.total)) ? Math.max(0, Number(backendOrder.total)) : totalPayable,
       date: new Date().toISOString().slice(0, 10),
       address: orderAddress,
       trackingSteps: buildTrackingSteps(),

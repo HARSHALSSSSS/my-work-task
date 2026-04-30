@@ -27,16 +27,13 @@ import { formatCurrency } from '../../utils/formatCurrency';
 type Nav = NativeStackNavigationProp<HomeTabStackParamList, 'ShopByCategory'>;
 
 const IMG_BANNER = require('../../../assets/images/print-business-cards.png');
-const IMG_CAT_BUSINESS = require('../../../assets/images/print-cat-business.png');
-const IMG_CAT_FLYERS = require('../../../assets/images/print-cat-flyers.png');
-const IMG_FRAME = require('../../../assets/images/shop-frame.png');
 const IMG_NOTEBOOKS = require('../../../assets/images/shop-notebooks.png');
 
 type CatItem = { id: string; label: string; categoryParam: string; imageSource?: ImageSourcePropType };
 const CATEGORIES: CatItem[] = [
   { id: 'all', label: 'All', categoryParam: '' },
-  { id: 'business', label: `Business${'\n'}Cards`, categoryParam: 'business-cards', imageSource: IMG_CAT_BUSINESS },
-  { id: 'flyers', label: `Flyers &${'\n'}Brochures`, categoryParam: 'flyers-brochures', imageSource: IMG_CAT_FLYERS },
+  { id: 'business', label: `Business${'\n'}Cards`, categoryParam: 'business-cards' },
+  { id: 'flyers', label: `Flyers &${'\n'}Brochures`, categoryParam: 'flyers-brochures' },
 ];
 
 type ProductItem = {
@@ -51,6 +48,14 @@ function shadow(e = 2) {
     android: { elevation: e + 1 },
     default: {},
   });
+}
+
+function resolveShoppingCategoryImage(category: any): ImageSourcePropType | undefined {
+  const key = String(category?.slug || category?.name || category?._id || '').trim().toLowerCase();
+  if (key.includes('print') || key.includes('document')) return undefined;
+  const rawImage = String(category?.image || '').trim();
+  if (!rawImage) return undefined;
+  return { uri: toAbsoluteAssetUrl(rawImage) } as ImageSourcePropType;
 }
 
 export function ShopByCategoryScreen() {
@@ -79,7 +84,7 @@ export function ShopByCategoryScreen() {
             id: c._id || c.slug || c.name,
             label: c.name || 'Category',
             categoryParam: c.slug || c._id || '',
-            imageSource: c.image ? ({ uri: toAbsoluteAssetUrl(c.image) } as ImageSourcePropType) : undefined,
+            imageSource: resolveShoppingCategoryImage(c),
           }))
           .filter((c: CatItem) => {
             const key = String(c.id || '');

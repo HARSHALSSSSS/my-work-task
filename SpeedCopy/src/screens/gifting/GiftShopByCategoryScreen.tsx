@@ -3,7 +3,6 @@ import {
   FlatList,
   Image,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,18 +10,21 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, Search, ArrowRight, Gift } from 'lucide-react-native';
+import { ChevronLeft, Search, ArrowRight } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { Spacing } from '../../constants/theme';
 import { GiftStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageCandidates, getProductImageUrl, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageUrl, mergeProductImageCandidates, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 
+const IMG_GIFT_PLACEHOLDER = require('../../../assets/images/gift-prod-mug.png');
+
 type Nav = NativeStackNavigationProp<GiftStackParamList, 'GiftShopByCategory'>;
+type Route = RouteProp<GiftStackParamList, 'GiftShopByCategory'>;
 
 type DesignItem = {
   id: string;
@@ -36,14 +38,61 @@ type DesignItem = {
   discount?: string;
 };
 
+function normalizeCategoryValue(value: any): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+}
+
+function extractGiftCategoryKeys(product: any): string[] {
+  const values = [
+    product?.category,
+    product?.category?.slug,
+    product?.category?._id,
+    product?.category?.name,
+    product?.subcategory,
+    product?.subcategory?.slug,
+    product?.subcategory?._id,
+    product?.subcategory?.name,
+  ];
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeCategoryValue(value))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function matchesGiftCategory(product: any, rawCategory?: string, matchedCategory?: any): boolean {
+  if (!rawCategory && !matchedCategory) return true;
+
+  const requestedKeys = Array.from(
+    new Set(
+      [
+        rawCategory,
+        matchedCategory?._id,
+        matchedCategory?.slug,
+        matchedCategory?.name,
+      ]
+        .map((value) => normalizeCategoryValue(value))
+        .filter(Boolean),
+    ),
+  );
+
+  if (!requestedKeys.length) return true;
+  const productKeys = extractGiftCategoryKeys(product);
+  return requestedKeys.some((key) => productKeys.includes(key));
+}
+
 function DesignImage({
   item,
   placeholderColor,
-  iconColor,
 }: {
   item: DesignItem;
   placeholderColor: string;
-  iconColor: string;
 }) {
   const candidates = React.useMemo(
     () => (item.imageCandidates?.length ? item.imageCandidates : item.thumbnail ? [toAbsoluteAssetUrl(item.thumbnail)] : []),
@@ -67,7 +116,7 @@ function DesignImage({
           onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
         />
       ) : (
-        <Gift size={48} color={iconColor} />
+        <Image source={IMG_GIFT_PLACEHOLDER} style={styles.designImg} resizeMode="cover" />
       )}
     </View>
   );
@@ -75,33 +124,47 @@ function DesignImage({
 
 export function GiftShopByCategoryScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<Route>();
   const { colors: t } = useThemeStore();
+  const routeCategory = route.params?.category;
+  const routeCategoryName = route.params?.categoryName;
   const [search, setSearch] = useState('');
-  const [activeChip, setActiveChip] = useState('All');
   const [designItems, setDesignItems] = useState<DesignItem[]>([]);
-  const [filterChips, setFilterChips] = useState(['All', 'Birthday', 'Love', 'Anniversary']);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
     Promise.all([
-      productsApi.getGiftingProducts({ limit: 40 }).catch(() => null),
+      productsApi.getGiftingProducts({ limit: 60 }).catch(() => null),
+      routeCategory ? productsApi.getGiftingProducts({ category: routeCategory, limit: 60 }).catch(() => null) : Promise.resolve(null),
       productsApi.getGiftingCategories().catch(() => null),
-    ]).then(([productsRes, catsRes]) => {
-      const rawItems = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
-      const items = sortProducts(dedupeProducts(rawItems));
+    ]).then(([allRes, filteredRes, catsRes]) => {
+      const matchedCategory = (catsRes || []).find((item: any) => (
+        item?.slug === routeCategory ||
+        item?._id === routeCategory ||
+        String(item?.name || '').toLowerCase() === String(routeCategory || '').toLowerCase()
+      ));
+      const allRawItems = allRes?.products || allRes?.data || (Array.isArray(allRes) ? allRes : []);
+      const filteredRawItems =
+        filteredRes?.products || filteredRes?.data || (Array.isArray(filteredRes) ? filteredRes : []);
+      const allItems = sortProducts(dedupeProducts(allRawItems));
+      const filteredFromAll = routeCategory
+        ? allItems.filter((item: any) => matchesGiftCategory(item, routeCategory, matchedCategory))
+        : allItems;
+      const items = sortProducts(dedupeProducts(filteredFromAll.length > 0 ? [...filteredFromAll, ...filteredRawItems] : filteredRawItems));
       return Promise.all(items.map(async (p: any) => {
         const productId = String(p?._id || p?.id || '').trim();
+        const listFallback = allItems.find((item: any) => String(item?._id || item?.id || '').trim() === productId) || p;
         const detailProduct = productId ? await productsApi.getGiftingProduct(productId).catch(() => null) : null;
         const source = detailProduct || p;
         const { price, originalPrice, discountLabel } = resolveProductPricing(source);
-        const imageCandidates = getProductImageCandidates(source);
+        const imageCandidates = mergeProductImageCandidates(source, p, listFallback);
         return {
           id: source._id || source.id || p._id || p.id,
           name: source.name || p.name || 'Product',
           category: typeof source.category === 'object' ? source.category?.name : (source.category || p.category || 'All'),
           isPremium: source.isFeatured || p.isFeatured || false,
-          thumbnail: imageCandidates[0] || getProductImageUrl(source) || getProductImageUrl(p),
+          thumbnail: imageCandidates[0] || getProductImageUrl(listFallback) || getProductImageUrl(source) || getProductImageUrl(p),
           imageCandidates,
           price,
           originalPrice,
@@ -110,25 +173,15 @@ export function GiftShopByCategoryScreen() {
       })).then((mappedItems) => {
         const mapped = mappedItems.filter((p: DesignItem) => Boolean(p.id));
         setDesignItems(dedupeProducts(mapped));
+        setLoading(false);
       });
-      if ((catsRes || []).length) {
-        const uniqueChips = Array.from(new Set((catsRes || []).map((c: any) => c.name).filter(Boolean)));
-        setFilterChips(['All', ...uniqueChips]);
-      } else {
-        setFilterChips(['All', 'Birthday', 'Love', 'Anniversary']);
-      }
-      setLoading(false);
     }).catch(() => {
       setDesignItems([]);
-      setFilterChips(['All', 'Birthday', 'Love', 'Anniversary']);
       setLoading(false);
     });
-  }, []));
+  }, [routeCategory, routeCategoryName]));
 
-  const filtered = (activeChip === 'All'
-    ? designItems
-    : designItems.filter((d) => d.category === activeChip)
-  ).filter((d) => !search.trim() || d.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = designItems.filter((d) => !search.trim() || d.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <SafeScreen>
@@ -137,7 +190,7 @@ export function GiftShopByCategoryScreen() {
         <TouchableOpacity style={styles.headerSlot} onPress={() => navigation.goBack()} hitSlop={12}>
           <ChevronLeft size={24} color={t.iconDefault} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: t.textPrimary }]}>Shop by category</Text>
+        <Text style={[styles.headerTitle, { color: t.textPrimary }]}>{routeCategoryName || 'Shop by category'}</Text>
         <View style={styles.headerSlot} />
       </View>
 
@@ -152,32 +205,6 @@ export function GiftShopByCategoryScreen() {
           onChangeText={setSearch}
         />
       </View>
-
-      {/* Filter Chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipContainer}
-        contentContainerStyle={styles.chipRow}
-      >
-        {filterChips.map((chip) => (
-          <TouchableOpacity
-            key={chip}
-            style={[
-              styles.chip,
-              { backgroundColor: activeChip === chip ? t.textPrimary : t.chipBg },
-            ]}
-            onPress={() => setActiveChip(chip)}
-          >
-            <Text style={[
-              styles.chipText,
-              { color: activeChip === chip ? t.surface : t.textMuted },
-            ]}>
-              {chip}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       {/* Design Grid */}
       {loading ? (
@@ -194,28 +221,40 @@ export function GiftShopByCategoryScreen() {
           columnWrapperStyle={styles.gridRow}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.designCard, { backgroundColor: t.card, borderColor: t.border }]}
-              activeOpacity={0.85}
-              onPress={() =>
-                navigation.navigate('GiftProductDetail', {
-                  productId: item.id,
-                  image: item.thumbnail,
-                  name: item.name,
-                  price: item.price,
-                  originalPrice: item.originalPrice,
-                  discount: item.discount,
-                })
-              }
-            >
-              <DesignImage item={item} placeholderColor={t.chipBg} iconColor={t.placeholder} />
-              <TouchableOpacity style={[styles.startDesignBtn, { backgroundColor: t.textPrimary }]} activeOpacity={0.9}>
+            <View style={[styles.designCard, { backgroundColor: t.card, borderColor: t.border }]}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() =>
+                  navigation.navigate('GiftProductDetail', {
+                    productId: item.id,
+                    image: item.thumbnail,
+                    name: item.name,
+                    price: item.price,
+                    originalPrice: item.originalPrice,
+                    discount: item.discount,
+                  })
+                }
+              >
+                <DesignImage item={item} placeholderColor={t.chipBg} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.startDesignBtn, { backgroundColor: t.textPrimary }]}
+                activeOpacity={0.9}
+                onPress={() =>
+                  navigation.navigate('GiftCustomize', {
+                    productId: item.id,
+                    flowType: 'gifting',
+                    image: item.thumbnail,
+                    name: item.name,
+                  })
+                }
+              >
                 <Text style={[styles.startDesignText, { color: t.background }]} numberOfLines={1}>
-                  {item.isPremium ? 'Explore Premium designs' : 'Start design'}
+                  Start design
                 </Text>
                 <ArrowRight size={14} color={t.background} style={{ flexShrink: 0 }} />
               </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
           )}
         />
       )}
@@ -265,35 +304,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#242424',
     paddingVertical: 0,
-  },
-  chipContainer: {
-    height: 52,
-    flexGrow: 0,
-  },
-  chipRow: {
-    paddingHorizontal: Spacing.lg,
-    paddingRight: Spacing.xl,
-    gap: 10,
-    alignItems: 'center',
-    height: 52,
-  },
-  chip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: '#F0F0F0',
-  },
-  chipActive: {
-    backgroundColor: '#000000',
-  },
-  chipText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 13,
-    color: '#424242',
-    lineHeight: 18,
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
   },
   loadingWrap: {
     flex: 1,

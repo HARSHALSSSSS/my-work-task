@@ -13,13 +13,13 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Search, ChevronLeft, Grid2x2, Clock3 } from 'lucide-react-native';
+import { Search, ChevronLeft, Grid2x2, Clock3, Gift } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { Spacing, scale } from '../../constants/theme';
 import { GiftStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageUrl, getProductImageCandidates, mergeProductImageCandidates, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
 import { extractSearchItems, rankSearchResults } from '../../utils/search';
 import { resolveProductPricing } from '../../utils/pricing';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -38,13 +38,14 @@ type CatItem = {
   color: string;
   image?: ImageSourcePropType;
   categoryParam?: string;
-  productTarget?: ProductItem;
 };
 
 type ProductItem = {
   id: string; name: string; price: number;
   originalPrice?: number; discount?: string;
   image: ImageSourcePropType;
+  imageCandidates?: string[];
+  fallbackImage?: ImageSourcePropType;
 };
 
 type DeliveryCard = { id: string; label: string; image: ImageSourcePropType };
@@ -63,6 +64,52 @@ function shadow(elevation = 3) {
   });
 }
 
+function GiftStoreProductImage({
+  item,
+  style,
+  placeholderColor,
+  iconColor,
+}: {
+  item: ProductItem;
+  style: any;
+  placeholderColor: string;
+  iconColor: string;
+}) {
+  const [imageIndex, setImageIndex] = useState(0);
+  const imageCandidates = React.useMemo(() => item.imageCandidates || [], [item.imageCandidates]);
+
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [item.id, item.image, item.imageCandidates]);
+
+  const activeImage = imageCandidates[imageIndex];
+
+  if (activeImage) {
+    return (
+      <Image
+        source={{ uri: activeImage }}
+        style={style}
+        resizeMode="cover"
+        onError={() => setImageIndex((prev) => (prev + 1 < imageCandidates.length ? prev + 1 : imageCandidates.length))}
+      />
+    );
+  }
+
+  if (item.fallbackImage) {
+    return <Image source={item.fallbackImage} style={style} resizeMode="cover" />;
+  }
+
+  if (item.image && imageCandidates.length === 0) {
+    return <Image source={item.image} style={style} resizeMode="cover" />;
+  }
+
+  return (
+    <View style={[style, styles.productImageFallback, { backgroundColor: placeholderColor }]}>
+      <Gift size={34} color={iconColor} />
+    </View>
+  );
+}
+
 export function GiftStoreScreen() {
   const navigation = useNavigation<Nav>();
   const { colors: t, mode } = useThemeStore();
@@ -77,7 +124,7 @@ export function GiftStoreScreen() {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [openingCategoryId, setOpeningCategoryId] = useState<string | null>(null);
+  const openingCategoryId: string | null = null;
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -87,34 +134,33 @@ export function GiftStoreScreen() {
       productsApi.getGiftingCategories().catch(() => []),
       productsApi.getGiftingProducts({ limit: 60 }).catch(() => null),
     ])
-      .then(([home, categories, productsRes]) => {
+      .then(async ([home, categories, productsRes]) => {
         const palette = ['#FFF0F5', '#FFF5EE', '#F0FFF0', '#FFFAF0', '#F0F9FF', '#F5F3FF'];
         const categorySeen = new Set<string>();
-        const categoryTargetMap = new Map<string, ProductItem>();
         const listItemsRaw: any[] = productsRes?.products || productsRes?.data || (Array.isArray(productsRes) ? productsRes : []);
         const listItems = sortProducts(dedupeProducts(listItemsRaw));
-
-        const mapProduct = (p: any): ProductItem => {
-          const thumb = getProductImageUrl(p);
-          const { price, originalPrice, discountLabel } = resolveProductPricing(p);
+        const enrichProduct = async (p: any): Promise<ProductItem> => {
+          const productId = String(p?._id || p?.id || '').trim();
+          const baseImageCandidates = getProductImageCandidates(p);
+          const detailProduct =
+            productId && baseImageCandidates.length <= 1
+              ? await productsApi.getGiftingProduct(productId).catch(() => null)
+              : null;
+          const source = detailProduct || p;
+          const imageCandidates = mergeProductImageCandidates(source, p);
+          const thumb = imageCandidates[0] || getProductImageUrl(source) || getProductImageUrl(p);
+          const { price, originalPrice, discountLabel } = resolveProductPricing(source);
           return {
-            id: p._id || p.id,
-            name: p.name || 'Product',
+            id: source?._id || source?.id || p?._id || p?.id,
+            name: source?.name || p?.name || 'Product',
             price,
             originalPrice,
             discount: discountLabel,
             image: thumb ? { uri: thumb } : IMG_PROD_MUG,
+            imageCandidates,
+            fallbackImage: IMG_PROD_MUG,
           };
         };
-
-        for (const rawItem of listItems) {
-          const key =
-            String(rawItem?.category?.slug || rawItem?.category?._id || rawItem?.category || '').trim().toLowerCase() ||
-            String(rawItem?.subcategory?.slug || rawItem?.subcategory?._id || rawItem?.subcategory || '').trim().toLowerCase();
-          if (!key || categoryTargetMap.has(key)) continue;
-          const mapped = mapProduct(rawItem);
-          if (mapped.id) categoryTargetMap.set(key, mapped);
-        }
 
         const mappedCategories = (categories || [])
           .filter((c: any) => c?.isActive !== false)
@@ -124,7 +170,6 @@ export function GiftStoreScreen() {
             color: palette[idx % palette.length],
             image: c.image ? ({ uri: toAbsoluteAssetUrl(c.image) } as ImageSourcePropType) : undefined,
             categoryParam: c.slug || c._id || c.name,
-            productTarget: categoryTargetMap.get(String(c.slug || c._id || c.name || '').trim().toLowerCase()),
           }))
           .filter((c: CatItem) => {
             const key = String(c.id || '');
@@ -140,13 +185,22 @@ export function GiftStoreScreen() {
         const featured = sortProducts(dedupeProducts(home?.featured_products?.length ? home.featured_products : listItems));
         const customizable = sortProducts(dedupeProducts(home?.customizable_products?.length ? home.customizable_products : listItems));
         const premium = sortProducts(dedupeProducts(home?.premium_designs || []));
-
-        const bestSellersPool = dedupeProducts(featured.map(mapProduct)).filter((p) => Boolean(p.id));
-        const newArrivalsPool = dedupeProducts(customizable.map(mapProduct)).filter((p) => Boolean(p.id));
         const recentPoolRaw = customizable.length ? customizable : featured.length ? featured : listItems;
-        const recentPool = dedupeProducts(recentPoolRaw.map(mapProduct)).filter((p) => Boolean(p.id));
         const allPool = sortProducts(dedupeProducts([...featured, ...customizable, ...premium, ...listItems]));
-        const allProductsPool = dedupeProducts(allPool.map(mapProduct)).filter((p) => Boolean(p.id));
+        const enrichedProducts = (await Promise.all(allPool.map((item) => enrichProduct(item)))).filter((item) => Boolean(item.id));
+        const productsById = new Map(enrichedProducts.map((item) => [String(item.id), item] as const));
+        const mapPoolProducts = (items: any[]): ProductItem[] => (
+          dedupeProducts(
+            items
+              .map((item) => productsById.get(String(item?._id || item?.id || '').trim()))
+              .filter(Boolean) as ProductItem[],
+          ).filter((item) => Boolean(item.id))
+        );
+
+        const bestSellersPool = mapPoolProducts(featured);
+        const newArrivalsPool = mapPoolProducts(customizable);
+        const recentPool = mapPoolProducts(recentPoolRaw);
+        const allProductsPool = dedupeProducts(enrichedProducts);
 
         // Keep sections mutually exclusive so one product appears once per page.
         const usedIds = new Set<string>();
@@ -180,7 +234,8 @@ export function GiftStoreScreen() {
   );
 
   const mapSearchProduct = useCallback((p: any): ProductItem => {
-    const thumb = getProductImageUrl(p);
+    const imageCandidates = getProductImageCandidates(p);
+    const thumb = imageCandidates[0] || getProductImageUrl(p);
     const { price, originalPrice, discountLabel } = resolveProductPricing(p);
     return {
       id: p._id || p.id,
@@ -189,6 +244,8 @@ export function GiftStoreScreen() {
       originalPrice,
       discount: discountLabel,
       image: thumb ? { uri: thumb } : IMG_PROD_MUG,
+      imageCandidates,
+      fallbackImage: IMG_PROD_MUG,
     };
   }, []);
 
@@ -212,36 +269,21 @@ export function GiftStoreScreen() {
     [navigation],
   );
 
-  const onCategoryPress = useCallback(async (cat: CatItem) => {
-    if (cat.productTarget?.id) {
-      onProductPress(cat.productTarget);
-      return;
+  const onCategoryPress = useCallback((cat: CatItem) => {
+    const categoryParam = String(cat.categoryParam || cat.id || cat.label || '').trim();
+    if (!categoryParam) return;
+
+    let bannerImage: string | undefined;
+    if (cat.image && typeof cat.image === 'object' && 'uri' in (cat.image as any)) {
+      bannerImage = toAbsoluteAssetUrl((cat.image as any).uri);
     }
 
-    if (!cat.categoryParam) return;
-
-    setOpeningCategoryId(cat.id);
-    try {
-      const response = await productsApi.getGiftingProducts({ category: cat.categoryParam, limit: 1 });
-      const rawItems = response?.products || response?.data || (Array.isArray(response) ? response : []);
-      const firstProduct = sortProducts(dedupeProducts(rawItems))[0];
-      if (!firstProduct) return;
-      const firstProductId = String(firstProduct._id || firstProduct.id || '').trim();
-      if (!firstProductId) return;
-      const thumb = getProductImageUrl(firstProduct);
-      const { price, originalPrice, discountLabel } = resolveProductPricing(firstProduct);
-      onProductPress({
-        id: firstProductId,
-        name: firstProduct.name || cat.label,
-        price,
-        originalPrice,
-        discount: discountLabel,
-        image: thumb ? { uri: thumb } : IMG_PROD_MUG,
-      });
-    } finally {
-      setOpeningCategoryId(null);
-    }
-  }, [onProductPress]);
+    navigation.navigate('GiftShopByCategory', {
+      category: categoryParam,
+      categoryName: cat.label,
+      bannerImage,
+    });
+  }, [navigation]);
 
   React.useEffect(() => {
     const query = search.trim();
@@ -349,7 +391,12 @@ export function GiftStoreScreen() {
                     activeOpacity={0.85}
                     onPress={() => onProductPress(item)}
                   >
-                    <Image source={item.image} style={styles.catalogImg} resizeMode="cover" />
+                    <GiftStoreProductImage
+                      item={item}
+                      style={styles.catalogImg}
+                      placeholderColor={t.chipBg}
+                      iconColor={t.placeholder}
+                    />
                     <View style={styles.cardInfoWrap}>
                       <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                       <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
@@ -415,7 +462,12 @@ export function GiftStoreScreen() {
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
-              <Image source={item.image} style={styles.catalogImg} resizeMode="cover" />
+              <GiftStoreProductImage
+                item={item}
+                style={styles.catalogImg}
+                placeholderColor={t.chipBg}
+                iconColor={t.placeholder}
+              />
               <View style={styles.cardInfoWrap}>
                 <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                 <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
@@ -444,7 +496,12 @@ export function GiftStoreScreen() {
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
-              <Image source={item.image} style={styles.catalogImg} resizeMode="cover" />
+              <GiftStoreProductImage
+                item={item}
+                style={styles.catalogImg}
+                placeholderColor={t.chipBg}
+                iconColor={t.placeholder}
+              />
               <View style={styles.cardInfoWrap}>
                 <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                 <Text style={[styles.cardInfoPrice, { color: t.textPrimary }]}>{formatCurrency(item.price)}</Text>
@@ -484,7 +541,12 @@ export function GiftStoreScreen() {
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
-              <Image source={item.image} style={styles.catalogImg} resizeMode="cover" />
+              <GiftStoreProductImage
+                item={item}
+                style={styles.catalogImg}
+                placeholderColor={t.chipBg}
+                iconColor={t.placeholder}
+              />
               <View style={styles.cardInfoWrap}>
                 <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                 <View style={styles.priceRow}>
@@ -519,7 +581,12 @@ export function GiftStoreScreen() {
               activeOpacity={0.85}
               onPress={() => onProductPress(item)}
             >
-              <Image source={item.image} style={styles.productImg} resizeMode="cover" />
+              <GiftStoreProductImage
+                item={item}
+                style={styles.productImg}
+                placeholderColor={t.chipBg}
+                iconColor={t.placeholder}
+              />
               <View style={styles.cardInfoWrap}>
                 <Text style={[styles.cardInfoName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                 <View style={styles.priceRow}>
@@ -608,28 +675,30 @@ const styles = StyleSheet.create({
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
     rowGap: 10,
-    columnGap: 8,
+    columnGap: 10,
     paddingBottom: 16,
   },
   catCard: {
-    width: '23%',
-    minHeight: 100,
-    borderRadius: 12,
+    width: 92,
+    height: 96,
+    borderRadius: 11,
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 5,
+    justifyContent: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     borderWidth: 0.8,
     borderColor: 'rgba(17,24,39,0.05)',
   },
   catImgWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: 6,
+    marginBottom: 4,
     borderWidth: 1,
   },
   catImg: {
@@ -642,8 +711,8 @@ const styles = StyleSheet.create({
   },
   catLabel: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    lineHeight: 12,
     textAlign: 'center',
   },
   catLoading: {
@@ -727,6 +796,10 @@ const styles = StyleSheet.create({
   catalogImg: {
     width: '100%',
     height: scale(126),
+  },
+  productImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardInfoName: {
     fontFamily: 'Poppins_500Medium',

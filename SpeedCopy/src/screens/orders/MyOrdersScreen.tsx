@@ -7,7 +7,7 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useOrderStore } from '../../store/useOrderStore';
 import { OrdersStackParamList } from '../../navigation/types';
-import { getProductImageCandidates, getProductImageUrl, toAbsoluteAssetUrl } from '../../utils/product';
+import { getProductImageCandidates, getProductImageUrl, mergeProductImageCandidates, toAbsoluteAssetUrl } from '../../utils/product';
 import { formatCurrency } from '../../utils/formatCurrency';
 import * as ordersApi from '../../api/orders';
 import * as productsApi from '../../api/products';
@@ -102,7 +102,7 @@ export const MyOrdersScreen: React.FC = () => {
     const missingImageOrders = storeOrders.filter((order) => {
       const firstItem = order.items[0];
       if (!firstItem) return false;
-      const currentImage = getProductImageCandidates(firstItem)[0] || toAbsoluteAssetUrl(firstItem.image);
+      const currentImage = mergeProductImageCandidates(firstItem)[0] || toAbsoluteAssetUrl(firstItem.image);
       return !currentImage;
     });
 
@@ -114,7 +114,7 @@ export const MyOrdersScreen: React.FC = () => {
         try {
           const backendOrder = await ordersApi.getOrder(order.id).catch(() => null);
           const backendItem = backendOrder?.items?.[0];
-          const orderItemImage = getProductImageCandidates(backendItem)[0] || toAbsoluteAssetUrl(backendItem?.thumbnail);
+          const orderItemImage = mergeProductImageCandidates(backendItem, order.items[0])[0] || toAbsoluteAssetUrl(backendItem?.thumbnail);
           if (orderItemImage) {
             return { orderId: order.id, image: orderItemImage };
           }
@@ -168,12 +168,12 @@ export const MyOrdersScreen: React.FC = () => {
       || (o.items[0]?.type === 'printing' ? 'printing' : o.items[0]?.type === 'gifting' ? 'gifting' : 'shopping')
     ) as Category,
     initials: (o.items[0]?.name || 'OR').slice(0, 2).toUpperCase(),
-    image: imageOverrides[o.id] || getProductImageUrl(o.items[0]) || toAbsoluteAssetUrl(o.items[0]?.image),
+    image: imageOverrides[o.id] || mergeProductImageCandidates(o.items[0])[0] || getProductImageUrl(o.items[0]) || toAbsoluteAssetUrl(o.items[0]?.image),
     imageCandidates: Array.from(
       new Set(
         [
           ...(imageOverrides[o.id] ? [imageOverrides[o.id]] : []),
-          ...getProductImageCandidates(o.items[0]),
+          ...mergeProductImageCandidates(o.items[0]),
           toAbsoluteAssetUrl(o.items[0]?.image),
         ].filter(Boolean),
       ),

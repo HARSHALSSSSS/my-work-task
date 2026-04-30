@@ -19,6 +19,7 @@ type LocationItem = {
   id: string;
   title: string;
   address: string;
+  pincode: string;
 };
 
 export const LocationScreen: React.FC = () => {
@@ -39,17 +40,11 @@ export const LocationScreen: React.FC = () => {
   }, [fetchAddresses]);
 
   useEffect(() => {
-    if (!activePincode) {
-      setLocations([]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
-    productsApi.getPickupLocations({ pincode: activePincode })
+    productsApi.getPickupLocations()
       .then((data) => {
         const mapped = (data || [])
-          .map((loc: any) => {
+          .map((loc: any): LocationItem => {
             const title = String(loc.name || loc.shopName || loc.storeName || 'Pickup location').trim();
             const addressParts = [
               loc.address,
@@ -62,21 +57,25 @@ export const LocationScreen: React.FC = () => {
             ]
               .map((part) => String(part || '').trim())
               .filter(Boolean);
-            const pincode = String(loc.pincode || activePincode || '').trim();
+            const pincode = String(loc.pincode || '').trim();
             return {
               id: loc._id || loc.id,
               title,
               address: [addressParts.join(', '), pincode].filter(Boolean).join(' - '),
+              pincode,
             };
           })
-          .filter((loc: LocationItem) => Boolean(loc.id && loc.address));
+          .filter((loc) => Boolean(loc.id && loc.address));
         setLocations(mapped);
       })
       .catch(() => setLocations([]))
       .finally(() => setLoading(false));
-  }, [activePincode]);
+  }, []);
 
-  const filtered = locations;
+  const filtered = React.useMemo(
+    () => (activePincode ? locations.filter((location) => location.pincode === activePincode) : locations),
+    [activePincode, locations],
+  );
 
   const emptyMessage = (() => {
     if (trimmedQuery && !isPincodeQuery) {
@@ -85,7 +84,7 @@ export const LocationScreen: React.FC = () => {
     if (isPincodeQuery) {
       return 'No pickup available for this pincode';
     }
-    return 'Enter a 6-digit pincode to fetch pickup locations.';
+    return 'No pickup locations available right now.';
   })();
 
   const onLocationSelect = (locationId: string) => {
@@ -129,7 +128,7 @@ export const LocationScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
-        {loading && isPincodeQuery && (
+        {loading && (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="small" color={t.textPrimary} />
           </View>
@@ -137,7 +136,11 @@ export const LocationScreen: React.FC = () => {
         {filtered.map((location) => (
           <TouchableOpacity
             key={location.id}
-            style={[styles.locationItem, { backgroundColor: t.card, borderBottomColor: t.divider }]}
+            style={[
+              styles.locationItem,
+              { backgroundColor: t.card, borderBottomColor: t.divider },
+              activePincode && location.pincode === activePincode ? styles.locationItemActive : null,
+            ]}
             activeOpacity={0.7}
             onPress={() => onLocationSelect(location.id)}
           >
@@ -204,6 +207,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#E8E8E8',
     backgroundColor: '#FFFFFF',
+  },
+  locationItemActive: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#0F766E',
   },
   locationTitle: {
     fontFamily: 'Poppins_600SemiBold',

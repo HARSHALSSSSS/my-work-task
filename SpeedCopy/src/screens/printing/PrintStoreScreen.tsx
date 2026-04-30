@@ -19,7 +19,7 @@ import { PrintStackParamList } from '../../navigation/types';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageUrl, mergeProductImageCandidates, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
@@ -29,6 +29,7 @@ type Nav = NativeStackNavigationProp<PrintStackParamList, 'PrintStore'>;
 const IMG_BUSINESS_CARDS = require('../../../assets/images/print-business-cards.png');
 const IMG_PRINT_BANNER = require('../../../assets/images/print-cat-business.png');
 const IMG_PRINT_SECONDARY = require('../../../assets/images/print-cat-flyers.png');
+const IMG_PRINT_BANNER_FALLBACK = require('../../../assets/images/print-business-cards.png');
 
 type Category = { id: string; label: string; image?: ImageSourcePropType };
 
@@ -105,12 +106,12 @@ export const PrintStoreScreen: React.FC = () => {
               return true;
             });
 
-          setApiCategories([{ id: 'all', label: 'All', image: IMG_PRINT_BANNER }, ...mappedTypes]);
+          setApiCategories([{ id: 'all', label: 'All' }, ...mappedTypes]);
 
           const homeBannerImages = (home?.banners || [])
             .map((banner: any) => toAbsoluteAssetUrl(banner?.image))
             .filter(Boolean);
-          setBannerUris(homeBannerImages.length ? homeBannerImages : [Image.resolveAssetSource(IMG_PRINT_BANNER).uri, Image.resolveAssetSource(IMG_PRINT_SECONDARY).uri]);
+          setBannerUris(homeBannerImages.length ? homeBannerImages : [Image.resolveAssetSource(IMG_PRINT_BANNER_FALLBACK).uri]);
 
           const listItemsRaw: any[] = productRes?.products || productRes?.data || (Array.isArray(productRes) ? productRes : []);
           const businessItems = sortProducts(dedupeProducts(listItemsRaw));
@@ -130,39 +131,40 @@ export const PrintStoreScreen: React.FC = () => {
             dedupeProducts(businessItems.length > 0 ? [...featuredHome, ...businessItems] : [...featuredHome, ...genericItems]),
           );
 
-          const mapped = displaySource
-            .map((p: any) => {
-              const thumb = p.thumbnail || p.images?.[0];
-              const { price, originalPrice, discountLabel } = resolveProductPricing(p);
-              const rawCategory =
-                p.business_print_type ||
-                (typeof p.businessPrintType === 'object'
-                  ? p.businessPrintType?.slug || p.businessPrintType?._id || p.businessPrintType?.name
-                  : p.businessPrintType) ||
-                (typeof p.type === 'object' ? p.type?.slug || p.type?._id || p.type?.name : p.type);
-              const isPremium = Boolean(p.isFeatured || p.is_featured || p.premium || p.designType === 'premium');
+          return Promise.all(displaySource.map(async (p: any) => {
+            const productId = String(p?._id || p?.id || '').trim();
+            const detailProduct = productId ? await productsApi.getBusinessPrintProduct(productId).catch(() => null) : null;
+            const source = detailProduct || p;
+            const imageCandidates = mergeProductImageCandidates(source, p);
+            const { price, originalPrice, discountLabel } = resolveProductPricing(source);
+            const rawCategory =
+              source.business_print_type ||
+              (typeof source.businessPrintType === 'object'
+                ? source.businessPrintType?.slug || source.businessPrintType?._id || source.businessPrintType?.name
+                : source.businessPrintType) ||
+              (typeof source.type === 'object' ? source.type?.slug || source.type?._id || source.type?.name : source.type);
+            const isPremium = Boolean(source.isFeatured || source.is_featured || source.premium || source.designType === 'premium');
 
-              return {
-                id: p._id || p.id,
-                name: p.name,
-                price,
-                originalPrice,
-                discount: discountLabel,
-                image: thumb ? { uri: toAbsoluteAssetUrl(thumb) } : IMG_BUSINESS_CARDS,
-                categoryKey: String(rawCategory || '').toLowerCase(),
-                isPremium,
-              };
-            })
-            .filter((p: PrintProduct) => Boolean(p.id));
+            return {
+              id: source._id || source.id || p._id || p.id,
+              name: source.name || p.name,
+              price,
+              originalPrice,
+              discount: discountLabel,
+              image: imageCandidates[0] ? ({ uri: imageCandidates[0] } as ImageSourcePropType) : IMG_BUSINESS_CARDS,
+              categoryKey: String(rawCategory || '').toLowerCase(),
+              isPremium,
+            } satisfies PrintProduct;
+          })).then((mappedItems) => {
+            const mappedUnique = dedupeProducts(mappedItems.filter((item) => Boolean(item.id)));
+            const usedIds = new Set<string>();
+            const uniqueProducts = takeUniqueById(mappedUnique, usedIds, 30);
+            const recentPool = mappedUnique.map((m) => ({ id: m.id, name: m.name, image: m.image }));
+            const uniqueRecent = takeUniqueById(recentPool, usedIds, 4);
 
-          const mappedUnique = dedupeProducts(mapped);
-          const usedIds = new Set<string>();
-          const uniqueProducts = takeUniqueById(mappedUnique, usedIds, 30);
-          const recentPool = mappedUnique.map((m) => ({ id: m.id, name: m.name, image: m.image }));
-          const uniqueRecent = takeUniqueById(recentPool, usedIds, 4);
-
-          setApiProducts(uniqueProducts);
-          setApiRecent(uniqueRecent);
+            setApiProducts(uniqueProducts);
+            setApiRecent(uniqueRecent);
+          });
         })
         .catch((e) => {
           setLoadError(e?.message || 'Could not load print store.');
@@ -248,11 +250,13 @@ export const PrintStoreScreen: React.FC = () => {
           />
         </View>
 
-        {heroBannerUri ? (
-          <View style={styles.bannerWrap}>
-            <Image source={{ uri: heroBannerUri }} style={styles.bannerImage} resizeMode="cover" />
-          </View>
-        ) : null}
+        <View style={[styles.bannerWrap, { backgroundColor: t.card, borderColor: t.border }]}>
+          <Image
+            source={{ uri: heroBannerUri || Image.resolveAssetSource(IMG_PRINT_BANNER_FALLBACK).uri }}
+            style={styles.bannerImage}
+            resizeMode="contain"
+          />
+        </View>
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -410,13 +414,16 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   bannerWrap: {
+    borderWidth: 1,
     borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   bannerImage: {
     width: '100%',
-    height: scale(118),
+    height: scale(124),
   },
   categoryRow: {
     gap: Spacing.sm,
@@ -439,8 +446,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   categoryImage: {
-    width: '100%',
-    height: '100%',
+    width: '92%',
+    height: '92%',
+    borderRadius: 28,
   },
   categoryLabel: {
     ...Typography.small,

@@ -12,7 +12,7 @@ import { useOrderStore } from '../../store/useOrderStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { Product } from '../../types';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageCandidates, getProductImageUrl, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageUrl, mergeProductImageCandidates, sortProducts, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { isCatalogProductInStock } from '../../utils/stock';
 
@@ -20,6 +20,75 @@ type Nav = NativeStackNavigationProp<HomeStackParamList, 'StationeryList'>;
 type Route = RouteProp<HomeStackParamList, 'StationeryList'>;
 
 const IMG_CATEGORY_BANNER = require('../../../assets/images/shop-notebooks.png');
+
+function normalizeCategoryValue(value: any): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+}
+
+function extractProductCategoryKeys(product: any): string[] {
+  const values = [
+    product?.category,
+    product?.category?.slug,
+    product?.category?._id,
+    product?.category?.name,
+    product?.subcategory,
+    product?.subcategory?.slug,
+    product?.subcategory?._id,
+    product?.subcategory?.name,
+    product?.type,
+    product?.business_print_type,
+  ];
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeCategoryValue(value))
+        .filter(Boolean),
+    ),
+  );
+}
+
+function matchesShoppingCategory(product: any, rawCategory?: string, matchedCategory?: any): boolean {
+  if (!rawCategory && !matchedCategory) return true;
+
+  const requestedKeys = Array.from(
+    new Set(
+      [
+        rawCategory,
+        matchedCategory?._id,
+        matchedCategory?.slug,
+        matchedCategory?.name,
+      ]
+        .map((value) => normalizeCategoryValue(value))
+        .filter(Boolean),
+    ),
+  );
+
+  if (!requestedKeys.length) return true;
+  const productKeys = extractProductCategoryKeys(product);
+  return requestedKeys.some((key) => productKeys.includes(key));
+}
+
+function isShoppingRootCategory(rawCategory?: string, routeCategoryName?: string, matchedCategory?: any): boolean {
+  const keys = Array.from(
+    new Set(
+      [
+        rawCategory,
+        routeCategoryName,
+        matchedCategory?._id,
+        matchedCategory?.slug,
+        matchedCategory?.name,
+      ]
+        .map((value) => normalizeCategoryValue(value))
+        .filter(Boolean),
+    ),
+  );
+
+  return keys.some((key) => key === 'shopping' || key === 'shop');
+}
 
 export function StationeryListScreen() {
   const { colors: t } = useThemeStore();
@@ -39,11 +108,12 @@ export function StationeryListScreen() {
   useFocusEffect(useCallback(() => {
     setLoading(true);
     Promise.all([
-      productsApi.getShoppingProducts({ category: category || undefined, limit: 30 }),
+      productsApi.getShoppingProducts({ limit: 80 }),
+      category ? productsApi.getShoppingProducts({ category, limit: 80 }).catch(() => null) : Promise.resolve(null),
       productsApi.getShoppingCategories().catch(() => []),
       productsApi.getShoppingHome().catch(() => null),
     ])
-      .then(([res, categories, home]) => {
+      .then(([allRes, filteredRes, categories, home]) => {
         const matchedCategory = (categories || []).find((item: any) => (
           item?.slug === category ||
           item?._id === category ||
@@ -61,16 +131,30 @@ export function StationeryListScreen() {
         setResolvedTitle(nextTitle);
         setBannerUri(nextBanner);
 
-        const rawItems = res?.products || res?.data || (Array.isArray(res) ? res : []);
-        const items = sortProducts(dedupeProducts(rawItems));
+        const allRawItems = allRes?.products || allRes?.data || (Array.isArray(allRes) ? allRes : []);
+        const filteredRawItems =
+          filteredRes?.products || filteredRes?.data || (Array.isArray(filteredRes) ? filteredRes : []);
+        const allItems = sortProducts(dedupeProducts(allRawItems));
+        const useRootShoppingList = isShoppingRootCategory(category, routeCategoryName, matchedCategory);
+        const filteredFromAll = useRootShoppingList
+          ? allItems
+          : allItems.filter((item: any) => matchesShoppingCategory(item, category, matchedCategory));
+        const items = sortProducts(dedupeProducts(
+          filteredFromAll.length > 0
+            ? [...filteredFromAll, ...(useRootShoppingList ? [] : filteredRawItems)]
+            : filteredRawItems,
+        ));
+
         return Promise.all((items || []).map(async (p: any) => {
           const productId = String(p?._id || p?.id || '').trim();
+          const listFallback = allItems.find((item: any) => String(item?._id || item?.id || '').trim() === productId) || p;
           const detailProduct = productId ? await productsApi.getShoppingProduct(productId).catch(() => null) : null;
           const source = detailProduct || p;
           const pricing = resolveProductPricing(source);
-          const imageCandidates = getProductImageCandidates(source);
+          const imageCandidates = mergeProductImageCandidates(source, p, listFallback);
           const imageUri =
             imageCandidates[0] ||
+            getProductImageUrl(listFallback) ||
             getProductImageUrl(p) ||
             (matchedCategory?.image ? toAbsoluteAssetUrl(matchedCategory.image) : '') ||
             (homeBanner ? toAbsoluteAssetUrl(homeBanner) : '');

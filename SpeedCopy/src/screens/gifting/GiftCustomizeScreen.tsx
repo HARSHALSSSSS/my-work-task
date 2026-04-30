@@ -1,6 +1,7 @@
 ﻿import React, { useCallback, useState } from 'react';
 import {
   Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,7 +19,7 @@ import { GiftStackParamList } from '../../navigation/types';
 import { useCartStore } from '../../store/useCartStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { isLikelyMongoId } from '../../utils/product';
+import { getProductImageUrl, isLikelyMongoId, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { getLiveStockState, LiveStockState } from '../../utils/stock';
 
@@ -52,11 +53,12 @@ const FONT_OPTIONS = ['Manrope (Modern)', 'Roboto (Clean)', 'Playfair (Elegant)'
 export function GiftCustomizeScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { productId } = route.params;
+  const { productId, image, name } = route.params;
   const { colors: t, mode: themeMode } = useThemeStore();
   const addItem = useCartStore((s) => s.addItem);
   const [stockState, setStockState] = useState<LiveStockState>({ inStock: true, availableStock: null, message: '' });
-  const [productName, setProductName] = useState('Customized Product');
+  const [productName, setProductName] = useState(name || 'Customized Product');
+  const [productImageUri, setProductImageUri] = useState(() => toAbsoluteAssetUrl(image));
   const [unitPrice, setUnitPrice] = useState(0);
 
   const [selectedSize, setSelectedSize] = useState('11oz');
@@ -72,6 +74,8 @@ export function GiftCustomizeScreen() {
       .then((p) => {
         const pricing = resolveProductPricing(p);
         setProductName(p.name || 'Customized Product');
+        const nextImage = getProductImageUrl(p);
+        if (nextImage) setProductImageUri(nextImage);
         setUnitPrice(pricing.price);
         setStockState(getLiveStockState(p, 1));
       })
@@ -88,10 +92,10 @@ export function GiftCustomizeScreen() {
       quantity: 1,
       price: unitPrice,
       name: `${productName} (${selectedSize})`,
-      image: '',
+      image: productImageUri,
     });
     navigation.getParent()?.navigate('CartTab', { screen: 'Cart' });
-  }, [addItem, navigation, productId, productName, selectedSize, stockState.inStock, unitPrice]);
+  }, [addItem, navigation, productId, productImageUri, productName, selectedSize, stockState.inStock, unitPrice]);
 
   const handleAddToCart = useCallback(() => {
     if (!stockState.inStock) return;
@@ -103,10 +107,10 @@ export function GiftCustomizeScreen() {
       quantity: 1,
       price: unitPrice,
       name: `${productName} (${selectedSize})`,
-      image: '',
+      image: productImageUri,
     });
     Alert.alert('Added to cart', 'Customized mug added to your cart.');
-  }, [addItem, productId, productName, selectedSize, stockState.inStock, unitPrice]);
+  }, [addItem, productId, productImageUri, productName, selectedSize, stockState.inStock, unitPrice]);
 
   return (
     <SafeScreen>
@@ -123,7 +127,16 @@ export function GiftCustomizeScreen() {
         {/* Preview */}
         <View style={[styles.previewWrap, { backgroundColor: t.chipBg }]}>
           <View style={styles.previewPlaceholder}>
-            <Gift size={64} color={t.placeholder} />
+            {productImageUri ? (
+              <Image
+                source={{ uri: productImageUri }}
+                style={styles.previewImage}
+                resizeMode="contain"
+                onError={() => setProductImageUri('')}
+              />
+            ) : (
+              <Gift size={64} color={t.placeholder} />
+            )}
           </View>
           <TouchableOpacity style={[styles.rotateBtn, { backgroundColor: t.card }]}>
             <RotateCw size={18} color={t.textSecondary} />
@@ -299,6 +312,11 @@ const styles = StyleSheet.create({
     height: 260,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
   },
   stockWarning: {
     fontFamily: 'Poppins_600SemiBold',

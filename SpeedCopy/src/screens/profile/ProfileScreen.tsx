@@ -150,21 +150,17 @@ export const ProfileScreen: React.FC = () => {
         const isLast = idx === items.length - 1;
         return (
           <React.Fragment key={item.label}>
-            <View style={styles.menuItem}>
+            <TouchableOpacity style={styles.menuItem} onPress={item.onPress} activeOpacity={0.75}>
               <View style={styles.menuItemLeft}>
                 <View style={[styles.menuIconWrap, { backgroundColor: item.iconBg }]}>
                   <Icon size={18} color={t.iconDefault} />
                 </View>
                 <Text style={[styles.menuLabel, { color: t.textPrimary }]}>{item.label}</Text>
               </View>
-              <TouchableOpacity
-                onPress={item.onPress}
-                style={styles.menuChevron}
-                hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-              >
+              <View style={styles.menuChevron}>
                 <ChevronRight size={18} color={t.chevron} />
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
             {!isLast ? <View style={[styles.menuSeparator, { backgroundColor: t.divider }]} /> : null}
           </React.Fragment>
         );

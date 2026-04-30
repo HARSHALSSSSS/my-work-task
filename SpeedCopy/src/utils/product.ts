@@ -140,6 +140,20 @@ export function getProductImageCandidates(product: any): string[] {
   return resolved;
 }
 
+export function mergeProductImageCandidates(...sources: any[]): string[] {
+  const merged: string[] = [];
+
+  for (const source of sources) {
+    const candidates = getProductImageCandidates(source);
+    for (const candidate of candidates) {
+      if (!candidate || merged.includes(candidate)) continue;
+      merged.push(candidate);
+    }
+  }
+
+  return merged;
+}
+
 export function getProductImageUrl(product: any): string {
   return getProductImageCandidates(product)[0] || '';
 }

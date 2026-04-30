@@ -98,7 +98,7 @@ export type GiftStackParamList = {
     image?: string;
     name?: string;
   };
-  GiftShopByCategory: { productId?: string };
+  GiftShopByCategory: { productId?: string; category?: string; categoryName?: string; bannerImage?: string };
 };
 
 export type CartStackParamList = {
