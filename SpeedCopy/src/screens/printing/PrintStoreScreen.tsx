@@ -307,7 +307,7 @@ export const PrintStoreScreen: React.FC = () => {
           <Image
             source={{ uri: heroBannerUri || Image.resolveAssetSource(IMG_PRINT_BANNER_FALLBACK).uri }}
             style={styles.bannerImage}
-            resizeMode="contain"
+            resizeMode="cover"
           />
         </View>
 
@@ -483,12 +483,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    marginHorizontal: -4,
   },
   bannerImage: {
     width: '100%',
-    height: scale(124),
+    height: scale(132),
   },
   categoryRow: {
     gap: Spacing.sm,

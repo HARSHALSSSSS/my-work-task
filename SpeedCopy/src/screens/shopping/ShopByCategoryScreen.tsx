@@ -498,14 +498,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   bannerWrap: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 16,
   },
   bannerImage: {
     width: '100%',
-    height: scale(118),
+    height: scale(132),
   },
   catRow: {
     flexDirection: 'row',
