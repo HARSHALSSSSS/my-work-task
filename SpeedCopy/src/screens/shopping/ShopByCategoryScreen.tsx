@@ -19,7 +19,7 @@ import { Spacing, scale } from '../../constants/theme';
 import { HomeTabStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
 import * as productsApi from '../../api/products';
-import { dedupeProducts, getProductImageUrl, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
+import { dedupeProducts, getProductImageUrl, mergeProductImageCandidates, sortProducts, takeUniqueById, toAbsoluteAssetUrl } from '../../utils/product';
 import { extractSearchItems, rankSearchResults } from '../../utils/search';
 import { resolveProductPricing } from '../../utils/pricing';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -40,6 +40,7 @@ type ProductItem = {
   id: string; name: string; price: number;
   originalPrice?: number; discount?: string;
   image: ImageSourcePropType;
+  imageCandidates?: string[];
 };
 
 function shadow(e = 2) {
@@ -56,6 +57,53 @@ function resolveShoppingCategoryImage(category: any): ImageSourcePropType | unde
   const rawImage = String(category?.image || '').trim();
   if (!rawImage) return undefined;
   return { uri: toAbsoluteAssetUrl(rawImage) } as ImageSourcePropType;
+}
+
+function ShoppingProductImage({
+  item,
+  style,
+  placeholderColor,
+}: {
+  item: ProductItem;
+  style: any;
+  placeholderColor: string;
+}) {
+  const candidates = React.useMemo(() => {
+    if (item.imageCandidates?.length) return item.imageCandidates;
+    if (item.image && typeof item.image === 'object' && 'uri' in (item.image as any)) {
+      const uri = toAbsoluteAssetUrl(String((item.image as any).uri || ''));
+      return uri ? [uri] : [];
+    }
+    return [];
+  }, [item.image, item.imageCandidates]);
+  const [imageIndex, setImageIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [item.id, item.image, item.imageCandidates]);
+
+  const activeImage = candidates[imageIndex];
+
+  if (activeImage) {
+    return (
+      <Image
+        source={{ uri: activeImage }}
+        style={style}
+        resizeMode="cover"
+        onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
+      />
+    );
+  }
+
+  if (item.image && typeof item.image === 'number') {
+    return <Image source={item.image} style={style} resizeMode="cover" />;
+  }
+
+  return (
+    <View style={[style, styles.productImageFallback, { backgroundColor: placeholderColor }]}>
+      <LayoutGrid size={24} color="#9CA3AF" />
+    </View>
+  );
 }
 
 export function ShopByCategoryScreen() {
@@ -104,7 +152,8 @@ export function ShopByCategoryScreen() {
         );
 
         const mapP = (p: any): ProductItem => {
-          const thumb = getProductImageUrl(p);
+          const imageCandidates = mergeProductImageCandidates(p);
+          const thumb = imageCandidates[0] || getProductImageUrl(p);
           const { price, originalPrice, discountLabel } = resolveProductPricing(p);
           return {
             id: p._id || p.id,
@@ -113,6 +162,7 @@ export function ShopByCategoryScreen() {
             originalPrice,
             discount: discountLabel,
             image: thumb ? { uri: thumb } : IMG_NOTEBOOKS,
+            imageCandidates,
           };
         };
 
@@ -147,7 +197,9 @@ export function ShopByCategoryScreen() {
   const onProductPress = useCallback(
     (item: ProductItem) => {
       let imageUri: string | undefined;
-      if (item.image && typeof item.image === 'object' && 'uri' in (item.image as any)) {
+      if (item.imageCandidates?.length) {
+        imageUri = item.imageCandidates[0];
+      } else if (item.image && typeof item.image === 'object' && 'uri' in (item.image as any)) {
         imageUri = toAbsoluteAssetUrl((item.image as any).uri);
       } else if (typeof item.image === 'number') {
         imageUri = Image.resolveAssetSource(item.image as any)?.uri;
@@ -187,7 +239,8 @@ export function ShopByCategoryScreen() {
         .then((response) => {
           if (!active) return;
           const mappedRemote = dedupeProducts(extractSearchItems<any>(response).map((p: any) => {
-            const thumb = getProductImageUrl(p);
+            const imageCandidates = mergeProductImageCandidates(p);
+            const thumb = imageCandidates[0] || getProductImageUrl(p);
             const { price, originalPrice, discountLabel } = resolveProductPricing(p);
             return {
               id: p._id || p.id,
@@ -196,6 +249,7 @@ export function ShopByCategoryScreen() {
               originalPrice,
               discount: discountLabel,
               image: thumb ? { uri: thumb } : IMG_NOTEBOOKS,
+              imageCandidates,
             };
           })).filter((p: ProductItem) => Boolean(p.id));
           const merged = dedupeProducts([...mappedRemote, ...searchPool]).filter((p) => Boolean(p.id));
@@ -262,7 +316,7 @@ export function ShopByCategoryScreen() {
                     activeOpacity={0.85}
                     onPress={() => onProductPress(item)}
                   >
-                    <Image source={item.image} style={styles.productImg} resizeMode="cover" />
+                    <ShoppingProductImage item={item} style={styles.productImg} placeholderColor={t.chipBg} />
                     <View style={styles.cardInfo}>
                       <Text style={[styles.cardName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                       <View style={styles.priceRow}>
@@ -334,7 +388,7 @@ export function ShopByCategoryScreen() {
                       activeOpacity={0.85}
                       onPress={() => onProductPress(item)}
                     >
-                      <Image source={item.image} style={styles.productImg} resizeMode="cover" />
+                      <ShoppingProductImage item={item} style={styles.productImg} placeholderColor={t.chipBg} />
                       <View style={styles.cardInfo}>
                         <Text style={[styles.cardName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                         <View style={styles.priceRow}>
@@ -366,7 +420,7 @@ export function ShopByCategoryScreen() {
                       activeOpacity={0.85}
                       onPress={() => onProductPress(item)}
                     >
-                      <Image source={item.image} style={styles.productImg} resizeMode="cover" />
+                      <ShoppingProductImage item={item} style={styles.productImg} placeholderColor={t.chipBg} />
                       <View style={styles.cardInfo}>
                         <Text style={[styles.cardName, { color: t.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                         <View style={styles.priceRow}>
@@ -502,6 +556,10 @@ const styles = StyleSheet.create({
   productImg: {
     width: '100%',
     height: scale(126),
+  },
+  productImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardInfo: {
     paddingHorizontal: 8,

@@ -40,11 +40,12 @@ type PrintProduct = {
   originalPrice?: number;
   discount?: string;
   image: ImageSourcePropType;
+  imageCandidates?: string[];
   categoryKey?: string;
   isPremium?: boolean;
 };
 
-type RecentItem = { id: string; name: string; image: ImageSourcePropType };
+type RecentItem = { id: string; name: string; image: ImageSourcePropType; imageCandidates?: string[] };
 
 type FilterKey = 'all' | 'popular' | 'premium' | 'budget';
 
@@ -59,6 +60,57 @@ function resolveCategoryFallbackImage(label: string): ImageSourcePropType {
   const key = String(label || '').toLowerCase();
   if (key.includes('flyer') || key.includes('brochure')) return IMG_PRINT_SECONDARY;
   return IMG_PRINT_BANNER;
+}
+
+function PrintStoreProductImage({
+  image,
+  imageCandidates,
+  style,
+  placeholderColor,
+  iconColor,
+}: {
+  image: ImageSourcePropType;
+  imageCandidates?: string[];
+  style: any;
+  placeholderColor: string;
+  iconColor: string;
+}) {
+  const candidates = React.useMemo(() => {
+    if (imageCandidates?.length) return imageCandidates;
+    if (typeof image === 'object' && image && 'uri' in (image as any)) {
+      const uri = toAbsoluteAssetUrl(String((image as any).uri || ''));
+      return uri ? [uri] : [];
+    }
+    return [];
+  }, [image, imageCandidates]);
+  const [imageIndex, setImageIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setImageIndex(0);
+  }, [image, imageCandidates]);
+
+  const activeImage = candidates[imageIndex];
+
+  if (activeImage) {
+    return (
+      <Image
+        source={{ uri: activeImage }}
+        style={style}
+        resizeMode="cover"
+        onError={() => setImageIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length))}
+      />
+    );
+  }
+
+  if (typeof image === 'number') {
+    return <Image source={image} style={style} resizeMode="cover" />;
+  }
+
+  return (
+    <View style={[style, styles.productImageFallback, { backgroundColor: placeholderColor }]}> 
+      <LayoutGrid size={22} color={iconColor} />
+    </View>
+  );
 }
 
 export const PrintStoreScreen: React.FC = () => {
@@ -152,6 +204,7 @@ export const PrintStoreScreen: React.FC = () => {
               originalPrice,
               discount: discountLabel,
               image: imageCandidates[0] ? ({ uri: imageCandidates[0] } as ImageSourcePropType) : IMG_BUSINESS_CARDS,
+              imageCandidates,
               categoryKey: String(rawCategory || '').toLowerCase(),
               isPremium,
             } satisfies PrintProduct;
@@ -159,7 +212,7 @@ export const PrintStoreScreen: React.FC = () => {
             const mappedUnique = dedupeProducts(mappedItems.filter((item) => Boolean(item.id)));
             const usedIds = new Set<string>();
             const uniqueProducts = takeUniqueById(mappedUnique, usedIds, 30);
-            const recentPool = mappedUnique.map((m) => ({ id: m.id, name: m.name, image: m.image }));
+            const recentPool = mappedUnique.map((m) => ({ id: m.id, name: m.name, image: m.image, imageCandidates: m.imageCandidates }));
             const uniqueRecent = takeUniqueById(recentPool, usedIds, 4);
 
             setApiProducts(uniqueProducts);
@@ -182,11 +235,11 @@ export const PrintStoreScreen: React.FC = () => {
   };
 
   const onProductPress = useCallback(
-    (item: { id: string; name?: string; price?: number; originalPrice?: number; image?: any; discount?: string }) => {
+    (item: { id: string; name?: string; price?: number; originalPrice?: number; image?: any; imageCandidates?: string[]; discount?: string }) => {
       if (!item?.id) return;
       navigation.navigate('BusinessShopByCategory', {
         productId: item.id,
-        image: resolveImageUri(item.image),
+        image: item.imageCandidates?.[0] || resolveImageUri(item.image),
         name: item.name,
         price: item.price,
         originalPrice: item.originalPrice,
@@ -316,7 +369,13 @@ export const PrintStoreScreen: React.FC = () => {
               onPress={() => onProductPress(item)}
               activeOpacity={0.85}
             >
-              <Image source={item.image} style={styles.recentImage} resizeMode="cover" />
+              <PrintStoreProductImage
+                image={item.image}
+                imageCandidates={item.imageCandidates}
+                style={styles.recentImage}
+                placeholderColor={t.chipBg}
+                iconColor={t.placeholder}
+              />
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -337,7 +396,13 @@ export const PrintStoreScreen: React.FC = () => {
               onPress={() => onProductPress(product)}
               activeOpacity={0.85}
             >
-              <Image source={product.image} style={styles.productImage} resizeMode="cover" />
+              <PrintStoreProductImage
+                image={product.image}
+                imageCandidates={product.imageCandidates}
+                style={styles.productImage}
+                placeholderColor={t.chipBg}
+                iconColor={t.placeholder}
+              />
               <View style={styles.productInfo}>
                 <Text style={[styles.productName, { color: t.textPrimary }]} numberOfLines={2}>
                   {product.name}
@@ -517,6 +582,10 @@ const styles = StyleSheet.create({
   productImage: {
     width: '100%',
     height: scale(126),
+  },
+  productImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   productInfo: {
     paddingHorizontal: 8,
