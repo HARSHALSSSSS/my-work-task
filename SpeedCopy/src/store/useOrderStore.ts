@@ -5,7 +5,7 @@ import * as ordersApi from '../api/orders';
 import * as userApi from '../api/user';
 import * as financeApi from '../api/finance';
 import { getToken } from '../api/client';
-import { getProductImageUrl } from '../utils/product';
+import { resolveProductImageSource } from '../utils/product';
 
 interface OrderState {
   orders: Order[];
@@ -106,18 +106,30 @@ function mapBackendOrder(o: ordersApi.BackendOrder): Order {
     id: o._id,
     orderNumber: o.orderNumber,
     status: mapBackendStatus(o.status),
-    items: o.items.map((i) => ({
-      id: i.productId,
-      backendProductId: i.productId,
-      designId: i.designId,
-      printConfigId: i.printConfigId,
-      type: i.flowType === 'printing' ? 'printing' as const : i.flowType === 'gifting' ? 'gifting' as const : 'product' as const,
-      flowType: i.flowType,
-      quantity: i.quantity,
-      price: i.unitPrice,
-      name: i.productName,
-      image: getProductImageUrl(i) || i.thumbnail || '',
-    })),
+    items: o.items.map((i) => {
+      const source: any = i;
+      const { imageUri } = resolveProductImageSource(
+        source,
+        source?.variantSnapshot,
+        source?.variant_snapshot,
+        source?.productSnapshot,
+        source?.product_snapshot,
+        source?.snapshot,
+      );
+
+      return {
+        id: i.productId,
+        backendProductId: i.productId,
+        designId: i.designId,
+        printConfigId: i.printConfigId,
+        type: i.flowType === 'printing' ? 'printing' as const : i.flowType === 'gifting' ? 'gifting' as const : 'product' as const,
+        flowType: i.flowType,
+        quantity: i.quantity,
+        price: i.unitPrice,
+        name: i.productName,
+        image: imageUri || source?.thumbnail || source?.image || '',
+      };
+    }),
     total: o.total,
     date: new Date(o.createdAt).toLocaleDateString('en-IN'),
     address: o.shippingAddress ? {

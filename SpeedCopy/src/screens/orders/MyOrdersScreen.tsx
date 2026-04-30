@@ -7,7 +7,7 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import { useThemeStore } from '../../store/useThemeStore';
 import { useOrderStore } from '../../store/useOrderStore';
 import { OrdersStackParamList } from '../../navigation/types';
-import { getProductImageCandidates, getProductImageUrl, mergeProductImageCandidates, toAbsoluteAssetUrl } from '../../utils/product';
+import { resolveProductImageSource } from '../../utils/product';
 import { formatCurrency } from '../../utils/formatCurrency';
 import * as ordersApi from '../../api/orders';
 import * as productsApi from '../../api/products';
@@ -26,31 +26,40 @@ interface DisplayOrder {
   category: Category;
   initials: string;
   image?: string;
-  imageCandidates?: string[];
+  imageCandidates: string[];
+  imageKey: string;
 }
+
+type ImageOverride = {
+  imageUri: string;
+  imageCandidates: string[];
+  imageKey: string;
+};
 
 function OrderImage({
   image,
   imageCandidates,
+  imageKey,
   backgroundColor,
   fallback: FallbackIcon,
   fallbackColor,
 }: {
   image?: string;
-  imageCandidates?: string[];
+  imageCandidates: string[];
+  imageKey: string;
   backgroundColor: string;
   fallback: React.ElementType;
   fallbackColor: string;
 }) {
   const candidates = React.useMemo(
-    () => Array.from(new Set((imageCandidates?.length ? imageCandidates : image ? [toAbsoluteAssetUrl(image)] : []).filter(Boolean))),
+    () => (imageCandidates.length ? imageCandidates : resolveProductImageSource({ image }).imageCandidates),
     [image, imageCandidates],
   );
   const [imageIndex, setImageIndex] = useState(0);
 
   useEffect(() => {
     setImageIndex(0);
-  }, [image, imageCandidates]);
+  }, [imageKey]);
 
   const activeUri = candidates[imageIndex];
 
@@ -90,7 +99,7 @@ export const MyOrdersScreen: React.FC = () => {
   const storeOrders = useOrderStore((s) => s.orders);
   const [loading, setLoading] = useState(true);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
-  const [imageOverrides, setImageOverrides] = useState<Record<string, string>>({});
+  const [imageOverrides, setImageOverrides] = useState<Record<string, ImageOverride>>({});
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -99,86 +108,125 @@ export const MyOrdersScreen: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+
     const missingImageOrders = storeOrders.filter((order) => {
-      const firstItem = order.items[0];
+      const firstItem: any = order.items[0];
       if (!firstItem) return false;
-      const currentImage = mergeProductImageCandidates(firstItem)[0] || toAbsoluteAssetUrl(firstItem.image);
-      return !currentImage;
+      const override = imageOverrides[order.id];
+      const resolved = resolveProductImageSource(
+        override,
+        firstItem,
+        firstItem?.product,
+        firstItem?.variantSnapshot,
+        firstItem?.variant_snapshot,
+        firstItem?.productSnapshot,
+        firstItem?.product_snapshot,
+        firstItem?.snapshot,
+      );
+      return !resolved.imageUri;
     });
 
     if (!missingImageOrders.length) return () => { cancelled = true; };
 
     Promise.all(
       missingImageOrders.map(async (order) => {
-        const backendProductId = order.items[0]?.backendProductId;
+        const firstItem: any = order.items[0] || {};
+        const fallbackProductId = String(firstItem?.backendProductId || firstItem?.productId || '').trim();
+
         try {
           const backendOrder = await ordersApi.getOrder(order.id).catch(() => null);
-          const backendItem = backendOrder?.items?.[0];
-          const orderItemImage = mergeProductImageCandidates(backendItem, order.items[0])[0] || toAbsoluteAssetUrl(backendItem?.thumbnail);
-          if (orderItemImage) {
-            return { orderId: order.id, image: orderItemImage };
+          const backendItem: any = backendOrder?.items?.[0] || null;
+
+          const fromOrder = resolveProductImageSource(
+            backendItem,
+            firstItem,
+            backendItem?.variantSnapshot,
+            backendItem?.variant_snapshot,
+            backendItem?.productSnapshot,
+            backendItem?.product_snapshot,
+            backendItem?.snapshot,
+            backendOrder,
+          );
+          if (fromOrder.imageUri) {
+            return { orderId: order.id, resolved: fromOrder };
           }
-          if (backendItem?.flowType === 'shopping' && backendItem?.productId) {
-            const shoppingProduct = await productsApi.getShoppingProduct(backendItem.productId).catch(() => null);
-            const shoppingImage = getProductImageUrl(shoppingProduct);
-            if (shoppingImage) {
-              return { orderId: order.id, image: shoppingImage };
-            }
+
+          const flowType = String(backendItem?.flowType || firstItem?.flowType || '').toLowerCase();
+          const productId = String(backendItem?.productId || fallbackProductId).trim();
+          if (!productId) return null;
+
+          let productPayload: any = null;
+          if (flowType === 'shopping') {
+            productPayload = await productsApi.getShoppingProduct(productId).catch(() => null);
+          } else if (flowType === 'gifting') {
+            productPayload = await productsApi.getGiftingProduct(productId).catch(() => null);
+          } else if (flowType === 'printing') {
+            productPayload = await productsApi.getBusinessPrintProduct(productId).catch(() => null);
           }
-          if (backendItem?.flowType === 'gifting' && backendItem?.productId) {
-            const giftingProduct = await productsApi.getGiftingProduct(backendItem.productId).catch(() => null);
-            const giftingImage = getProductImageUrl(giftingProduct);
-            if (giftingImage) {
-              return { orderId: order.id, image: giftingImage };
-            }
+
+          if (!productPayload) {
+            productPayload = await productsApi.getProductById(productId).catch(() => null);
           }
-          if (!backendProductId) return null;
-          const product = await productsApi.getProductById(backendProductId);
-          const image = getProductImageUrl(product);
-          return image ? { orderId: order.id, image } : null;
+
+          const resolved = resolveProductImageSource(productPayload, backendItem, firstItem);
+          if (!resolved.imageUri) return null;
+          return { orderId: order.id, resolved };
         } catch {
           return null;
         }
       }),
     ).then((results) => {
       if (cancelled) return;
-      const nextEntries = results.filter(Boolean) as Array<{ orderId: string; image: string }>;
+      const nextEntries = results.filter(Boolean) as Array<{ orderId: string; resolved: ReturnType<typeof resolveProductImageSource> }>;
       if (!nextEntries.length) return;
       setImageOverrides((prev) => {
         const next = { ...prev };
-        nextEntries.forEach(({ orderId, image }) => {
-          next[orderId] = image;
+        nextEntries.forEach(({ orderId, resolved }) => {
+          next[orderId] = {
+            imageUri: resolved.imageUri,
+            imageCandidates: resolved.imageCandidates,
+            imageKey: resolved.imageKey,
+          };
         });
         return next;
       });
     });
 
     return () => { cancelled = true; };
-  }, [storeOrders]);
+  }, [imageOverrides, storeOrders]);
 
-  const displayOrders: DisplayOrder[] = storeOrders.map((o) => ({
-    id: o.id,
-    orderId: o.orderNumber,
-    name: o.items[0]?.name || 'Order',
-    details: o.items.map((i) => i.name).join(', '),
-    amount: o.total,
-    status: o.status === 'delivered' ? 'Delivered' as Status : o.status === 'cancelled' ? 'Cancelled' as Status : 'In Transit' as Status,
-    category: (
-      o.items[0]?.flowType
-      || (o.items[0]?.type === 'printing' ? 'printing' : o.items[0]?.type === 'gifting' ? 'gifting' : 'shopping')
-    ) as Category,
-    initials: (o.items[0]?.name || 'OR').slice(0, 2).toUpperCase(),
-    image: imageOverrides[o.id] || mergeProductImageCandidates(o.items[0])[0] || getProductImageUrl(o.items[0]) || toAbsoluteAssetUrl(o.items[0]?.image),
-    imageCandidates: Array.from(
-      new Set(
-        [
-          ...(imageOverrides[o.id] ? [imageOverrides[o.id]] : []),
-          ...mergeProductImageCandidates(o.items[0]),
-          toAbsoluteAssetUrl(o.items[0]?.image),
-        ].filter(Boolean),
-      ),
-    ),
-  }));
+  const displayOrders: DisplayOrder[] = React.useMemo(() => storeOrders.map((o) => {
+    const firstItem: any = o.items[0] || {};
+    const override = imageOverrides[o.id];
+    const resolvedImage = resolveProductImageSource(
+      override,
+      firstItem,
+      firstItem?.product,
+      firstItem?.variantSnapshot,
+      firstItem?.variant_snapshot,
+      firstItem?.productSnapshot,
+      firstItem?.product_snapshot,
+      firstItem?.snapshot,
+      o,
+    );
+
+    return {
+      id: o.id,
+      orderId: o.orderNumber,
+      name: firstItem?.name || 'Order',
+      details: o.items.map((i) => i.name).join(', '),
+      amount: o.total,
+      status: o.status === 'delivered' ? 'Delivered' as Status : o.status === 'cancelled' ? 'Cancelled' as Status : 'In Transit' as Status,
+      category: (
+        firstItem?.flowType
+        || (firstItem?.type === 'printing' ? 'printing' : firstItem?.type === 'gifting' ? 'gifting' : 'shopping')
+      ) as Category,
+      initials: (firstItem?.name || 'OR').slice(0, 2).toUpperCase(),
+      image: resolvedImage.imageUri || undefined,
+      imageCandidates: resolvedImage.imageCandidates,
+      imageKey: resolvedImage.imageKey,
+    };
+  }), [imageOverrides, storeOrders]);
 
   const onReorder = useCallback(async (orderId: string) => {
     if (reorderingId) return;
@@ -234,6 +282,7 @@ export const MyOrdersScreen: React.FC = () => {
                 <OrderImage
                   image={order.image}
                   imageCandidates={order.imageCandidates}
+                  imageKey={order.imageKey}
                   backgroundColor={cat.bg}
                   fallback={CatIcon}
                   fallbackColor={cat.stroke}

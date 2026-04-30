@@ -4,39 +4,65 @@ export function isLikelyMongoId(value?: string | null): boolean {
   return /^[a-fA-F0-9]{24}$/.test(String(value || ''));
 }
 
+function hasAbsoluteAssetScheme(raw: string): boolean {
+  return /^(https?:|file:|content:|data:)/i.test(raw);
+}
+
+function normalizeRelativeAssetPath(value: string): string {
+  let raw = String(value || '').trim().replace(/\\/g, '/');
+  if (!raw) return '';
+
+  raw = raw.replace(/^\.\//, '');
+  if (raw.startsWith('//')) return `https:${raw}`;
+
+  const lowerRaw = raw.toLowerCase();
+  const uploadsMarker = lowerRaw.indexOf('/uploads/');
+  if (uploadsMarker >= 0) {
+    return raw.slice(uploadsMarker);
+  }
+
+  if (lowerRaw.startsWith('uploads/')) {
+    return `/${raw.replace(/^\/+/, '')}`;
+  }
+
+  if (/^\/?api\/uploads\//i.test(raw)) {
+    return `/${raw.replace(/^\/?api\//i, '').replace(/^\/+/, '')}`;
+  }
+
+  if (raw.startsWith('/')) {
+    return raw;
+  }
+
+  const likelyFilePath = /\.[a-z0-9]{2,6}([?#].*)?$/i.test(raw);
+  if (likelyFilePath) {
+    return `/uploads/${raw.replace(/^\/+/, '')}`;
+  }
+
+  return `/uploads/${raw.replace(/^\/+/, '')}`;
+}
+
 export function toAbsoluteAssetUrl(url?: string | null): string {
   let raw = String(url || '').trim();
   if (!raw) return '';
 
-  // For relative paths, ensure /uploads/ prefix for gateway routing
-  if (!raw.startsWith('http') && !raw.startsWith('file:') && !raw.startsWith('content:') && !raw.startsWith('data:') && !raw.startsWith('//')) {
-    if (!raw.startsWith('/uploads')) {
-      raw = raw.startsWith('/') ? `/uploads${raw}` : `/uploads/${raw}`;
-    }
+  if (!hasAbsoluteAssetScheme(raw) && !raw.startsWith('//')) {
+    raw = normalizeRelativeAssetPath(raw);
   }
 
-  if (/^(https?:|file:|content:|data:)/i.test(raw)) {
+  if (hasAbsoluteAssetScheme(raw)) {
     try {
       const parsed = new URL(raw);
       const apiBase = new URL(API_BASE_URL);
-      const isLocalHost =
-        parsed.hostname === 'localhost'
-        || parsed.hostname === '127.0.0.1'
-        || parsed.hostname === '0.0.0.0';
-      const isPrivateIpv4 =
-        /^10\./.test(parsed.hostname)
-        || /^192\.168\./.test(parsed.hostname)
-        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(parsed.hostname);
+      const hostname = parsed.hostname.toLowerCase();
+      const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '::1';
+      const isPrivateIpv4 = /^10\./.test(hostname)
+        || /^192\.168\./.test(hostname)
+        || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+      const isInternalServiceHost = !hostname.includes('.') && !isLocalHost;
       const uploadsPath = parsed.pathname.includes('/uploads/')
         ? parsed.pathname.slice(parsed.pathname.indexOf('/uploads/'))
         : '';
-      const shouldRewriteToGateway =
-        uploadsPath
-        && (
-          isLocalHost
-          || isPrivateIpv4
-          || parsed.origin !== apiBase.origin
-        );
+      const shouldRewriteToGateway = uploadsPath && (isLocalHost || isPrivateIpv4 || isInternalServiceHost);
 
       if (shouldRewriteToGateway) {
         return `${apiBase.origin}${uploadsPath}${parsed.search}${parsed.hash}`;
@@ -46,6 +72,7 @@ export function toAbsoluteAssetUrl(url?: string | null): string {
       return raw;
     }
   }
+
   if (raw.startsWith('//')) return `https:${raw}`;
   const base = API_BASE_URL.replace(/\/+$/, '');
   return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
@@ -107,11 +134,16 @@ function pickFirstImageCandidate(input: any, depth = 0, seen?: WeakSet<object>):
       input.uri,
       input.src,
       input.image,
+      input.imageUri,
+      input.imagePath,
+      input.image_path,
       input.path,
       input.secure_url,
       input.original,
       input.optimized,
       input.thumbnail,
+      input.thumbnailImage,
+      input.thumbnail_image,
       input.thumbnailUrl,
       input.thumbnail_url,
       input.thumb,
@@ -120,13 +152,36 @@ function pickFirstImageCandidate(input: any, depth = 0, seen?: WeakSet<object>):
       input.imageUrl,
       input.imageURL,
       input.image_url,
+      input.productImage,
+      input.product_image,
+      input.variantImage,
+      input.variant_image,
+      input.displayImage,
+      input.display_image,
+      input.primaryImage,
+      input.primary_image,
+      input.defaultImage,
+      input.default_image,
       input.featuredImage,
+      input.featured_image,
       input.mainImage,
+      input.main_image,
+      input.coverImage,
+      input.cover_image,
       input.preview,
       input.previewImage,
+      input.preview_image,
       input.preview_url,
       input.fileUrl,
+      input.file_url,
       input.asset,
+      input.assetUrl,
+      input.asset_url,
+      input.poster,
+      input.banner,
+      input.photo,
+      input.picture,
+      input.img,
     ];
 
     for (const value of direct) {
@@ -136,19 +191,41 @@ function pickFirstImageCandidate(input: any, depth = 0, seen?: WeakSet<object>):
 
     const nested = [
       input.images,
+      input.imageCandidates,
       input.media,
       input.gallery,
       input.files,
       input.attachments,
       input.variants,
       input.variant,
+      input.variantSnapshot,
+      input.variant_snapshot,
+      input.selectedVariant,
+      input.selected_variant,
+      input.defaultVariant,
+      input.default_variant,
       input.options,
+      input.option,
       input.product,
+      input.productRef,
+      input.product_ref,
+      input.productSnapshot,
+      input.product_snapshot,
       input.item,
+      input.itemSnapshot,
+      input.item_snapshot,
+      input.orderItem,
+      input.lineItem,
+      input.line_item,
+      input.snapshot,
+      input.orderSnapshot,
+      input.order_snapshot,
       input.data,
       input.payload,
       input.result,
       input.node,
+      input.meta,
+      input.raw,
       input.productData,
       input.product_data,
       input.productDetails,
@@ -185,33 +262,54 @@ export function getProductImageCandidates(product: any): string[] {
     product?.thumbnail?.src,
     product?.thumbnail?.path,
     product?.thumbnail,
+    product?.thumbnailImage,
+    product?.thumbnail_image,
+    product?.thumbnailUrl,
+    product?.thumbnail_url,
+    product?.thumb,
+    product?.thumbUrl,
+    product?.thumb_url,
     product?.product?.thumbnail,
     product?.product?.image,
     product?.product?.images,
     product?.product?.media,
     product?.product?.gallery,
     product?.product?.variants,
+    product?.product?.variantSnapshot,
+    product?.product?.productSnapshot,
     product?.item?.thumbnail,
     product?.item?.image,
     product?.item?.images,
     product?.item?.variants,
+    product?.item?.variantSnapshot,
+    product?.item?.productSnapshot,
     product?.orderItem?.thumbnail,
     product?.orderItem?.image,
     product?.orderItem?.images,
     product?.orderItem?.variants,
-    product?.thumbnailUrl,
-    product?.thumbnail_url,
-    product?.thumb,
-    product?.thumbUrl,
-    product?.thumb_url,
+    product?.orderItem?.variantSnapshot,
+    product?.orderItem?.productSnapshot,
     product?.coverImage,
     product?.cover_image,
     product?.heroImage,
     product?.hero_image,
     product?.image,
+    product?.imageUri,
+    product?.imagePath,
+    product?.image_path,
     product?.imageUrl,
     product?.imageURL,
     product?.image_url,
+    product?.productImage,
+    product?.product_image,
+    product?.variantImage,
+    product?.variant_image,
+    product?.displayImage,
+    product?.display_image,
+    product?.primaryImage,
+    product?.primary_image,
+    product?.defaultImage,
+    product?.default_image,
     product?.featuredImage,
     product?.featured_image,
     product?.mainImage,
@@ -224,20 +322,46 @@ export function getProductImageCandidates(product: any): string[] {
     product?.fileUrl,
     product?.file_url,
     product?.asset,
+    product?.assetUrl,
+    product?.asset_url,
+    product?.photo,
+    product?.picture,
+    product?.img,
     product?.images,
+    product?.imageCandidates,
     product?.media,
     product?.gallery,
     product?.files,
     product?.attachments,
     product?.variants,
     product?.variant,
+    product?.variantSnapshot,
+    product?.variant_snapshot,
+    product?.selectedVariant,
+    product?.selected_variant,
+    product?.defaultVariant,
+    product?.default_variant,
     product?.option,
     product?.options,
     product?.product,
+    product?.productRef,
+    product?.product_ref,
+    product?.productSnapshot,
+    product?.product_snapshot,
+    product?.snapshot,
+    product?.orderSnapshot,
+    product?.order_snapshot,
     product?.item,
+    product?.itemSnapshot,
+    product?.item_snapshot,
+    product?.orderItem,
+    product?.lineItem,
+    product?.line_item,
     product?.data,
     product?.payload,
     product?.result,
+    product?.meta,
+    product?.raw,
     product?.productData,
     product?.product_data,
     product?.productDetails,
@@ -265,11 +389,12 @@ export function mergeProductImageCandidates(...sources: any[]): string[] {
   return merged;
 }
 
-export function resolveProductImageSource(...sources: any[]): { imageUri: string; imageCandidates: string[] } {
+export function resolveProductImageSource(...sources: any[]): { imageUri: string; imageCandidates: string[]; imageKey: string } {
   const imageCandidates = mergeProductImageCandidates(...sources);
   return {
     imageUri: imageCandidates[0] || '',
     imageCandidates,
+    imageKey: imageCandidates.join('|'),
   };
 }
 

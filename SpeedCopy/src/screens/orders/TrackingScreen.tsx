@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Linking,
   Platform,
@@ -22,7 +22,7 @@ import { Colors, Radii, Spacing } from '../../constants/theme';
 import { AppTabParamList, CartStackParamList, OrdersStackParamList, ProfileStackParamList } from '../../navigation/types';
 import { Order, TrackingStep } from '../../types';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { getProductImageUrl } from '../../utils/product';
+import { resolveProductImageSource } from '../../utils/product';
 import * as ordersApi from '../../api/orders';
 import * as deliveryApi from '../../api/delivery';
 import { useSocketEvent } from '../../hooks/useSocket';
@@ -262,11 +262,26 @@ export const TrackingScreen: React.FC = () => {
               id: backendOrder._id,
               orderNumber: backendOrder.orderNumber,
               status: statusMap[backendOrder.status] || 'processing',
-              items: (backendOrder.items || []).map((i: any) => ({
-                id: i.productId || i._id, type: 'product', quantity: i.quantity,
-                price: i.unitPrice, name: i.productName, image: getProductImageUrl(i) || i.thumbnail || '',
-                flowType: i.flowType,
-              })),
+              items: (backendOrder.items || []).map((i: any) => {
+                const { imageUri } = resolveProductImageSource(
+                  i,
+                  i?.variantSnapshot,
+                  i?.variant_snapshot,
+                  i?.productSnapshot,
+                  i?.product_snapshot,
+                  i?.snapshot,
+                );
+
+                return {
+                  id: i.productId || i._id,
+                  type: 'product',
+                  quantity: i.quantity,
+                  price: i.unitPrice,
+                  name: i.productName,
+                  image: imageUri || i.thumbnail || i.image || '',
+                  flowType: i.flowType,
+                };
+              }),
               total: backendOrder.total,
               date: backendOrder.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
               address: backendOrder.shippingAddress ? {
