@@ -20,8 +20,10 @@ import {
   Package,
   RotateCcw,
   ShoppingCart,
+  Upload,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { Spacing } from '../../constants/theme';
 import { useCartStore } from '../../store/useCartStore';
@@ -564,6 +566,7 @@ type SavedCustomizationDraft = {
   businessServicePackage?: 'standard' | 'express' | 'instant' | '';
   selectedPickupShopId?: string;
   businessDesignType?: 'premium' | 'normal';
+  readyToPrintFile?: productsApi.UploadedFile | null;
 };
 
 type BusinessDeliveryMethod = 'pickup' | 'delivery';
@@ -643,8 +646,11 @@ export function CustomizeScreen() {
   const [selectedPickupShopId, setSelectedPickupShopId] = useState(businessConfigDraft?.shopId || '');
   const [servicePackages, setServicePackages] = useState<Array<{ id: BusinessServicePackage; label: string; duration?: string }>>([]);
   const [userImageUri, setUserImageUri] = useState<string | null>(null);
+  const [readyPrintUploadedFile, setReadyPrintUploadedFile] = useState<productsApi.UploadedFile | null>(null);
+  const [uploadingReadyPrint, setUploadingReadyPrint] = useState(false);
   const [exportedUri, setExportedUri] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [canvasResetVersion, setCanvasResetVersion] = useState(0);
   const [imgAspect, setImgAspect] = useState<number | null>(null);
   /** Natural pixel size of the mockup, required so the print zone lines up with the product. */
   const [productNaturalSize, setProductNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -718,12 +724,14 @@ export function CustomizeScreen() {
     setShowPrintAreaEditor(false);
     setIsAreaHandleDragging(false);
     setIsTextDragging(false);
+    setCanvasResetVersion(0);
     setBusinessSides(businessConfigDraft?.selectedOptions?.sides || 'single_sided');
     setBusinessDesignType(businessConfigDraft?.designType || 'normal');
     setBusinessQuantity(Math.max(1, Number(businessConfigDraft?.quantity || 1)));
     setBusinessDeliveryMethod(businessConfigDraft?.deliveryMethod || 'delivery');
     setBusinessServicePackage(businessConfigDraft?.servicePackage || 'standard');
     setSelectedPickupShopId(businessConfigDraft?.shopId || '');
+    setReadyPrintUploadedFile(null);
     if (businessConfigDraft?.selectedOptions?.size) {
       setSelectedSize(businessConfigDraft.selectedOptions.size);
     }
@@ -904,6 +912,9 @@ export function CustomizeScreen() {
           if (customization.businessDesignType === 'premium' || customization.businessDesignType === 'normal') {
             setBusinessDesignType(customization.businessDesignType);
           }
+          if (customization.readyToPrintFile && typeof customization.readyToPrintFile === 'object') {
+            setReadyPrintUploadedFile(customization.readyToPrintFile as productsApi.UploadedFile);
+          }
         }
       })
       .catch(() => {});
@@ -948,17 +959,85 @@ export function CustomizeScreen() {
     businessServicePackage,
     selectedPickupShopId,
     businessDesignType,
+    readyToPrintFile: readyPrintUploadedFile,
   }), [
     businessDeliveryMethod,
     businessDesignType,
     businessQuantity,
     businessServicePackage,
     businessSides,
+    readyPrintUploadedFile,
     selectedBase,
     selectedInterior,
     selectedPickupShopId,
     selectedSize,
   ]);
+
+  const readyPrintStatusText = React.useMemo(() => {
+    if (uploadingReadyPrint) return 'Uploading ready-to-print file...';
+    if (readyPrintUploadedFile?.name) {
+      const pageText = readyPrintUploadedFile.pageCount ? ` • ${readyPrintUploadedFile.pageCount} pages` : '';
+      return `${readyPrintUploadedFile.name}${pageText}`;
+    }
+    return 'Upload PDF, DOC, DOCX, JPG, or PNG if your artwork is already final.';
+  }, [readyPrintUploadedFile, uploadingReadyPrint]);
+
+  const pickReadyPrintFile = useCallback(async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'image/png',
+          'image/jpeg',
+          'image/jpg',
+        ],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) return;
+
+      let resolvedUri = asset.uri;
+      if (resolvedUri.startsWith('content://')) {
+        const safeName = String(asset.name || 'design-file')
+          .replace(/[^\w.\-]/g, '_')
+          .replace(/_+/g, '_');
+        const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+        if (baseDir) {
+          const uploadDir = `${baseDir}custom-uploads/`;
+          await FileSystem.makeDirectoryAsync(uploadDir, { intermediates: true });
+          const target = `${uploadDir}${Date.now()}-${safeName || 'design-file'}`;
+          await FileSystem.copyAsync({ from: resolvedUri, to: target });
+          resolvedUri = target;
+        }
+      }
+
+      setUploadingReadyPrint(true);
+      try {
+        const uploaded = await productsApi.uploadPrintingFile({
+          uri: resolvedUri,
+          name: asset.name ?? 'design-file',
+          mimeType: asset.mimeType,
+        });
+        setReadyPrintUploadedFile(uploaded);
+        Alert.alert('Design uploaded', 'Your ready-to-print file has been attached to this product.');
+      } catch (e: any) {
+        setReadyPrintUploadedFile(null);
+        Alert.alert('Upload failed', e?.serverMessage || e?.response?.data?.message || e?.message || 'Could not upload the design file. Please try another file.');
+      } finally {
+        setUploadingReadyPrint(false);
+      }
+    } catch {
+      setUploadingReadyPrint(false);
+    }
+  }, []);
+
+  const clearReadyPrintFile = useCallback(() => {
+    setReadyPrintUploadedFile(null);
+  }, []);
 
   useEffect(() => {
     setProductNaturalSize(null);
@@ -1109,6 +1188,8 @@ export function CustomizeScreen() {
 
   const handleResetTransforms = useCallback(() => {
     skiaCanvasRef.current?.resetTransforms();
+    setExportedUri(null);
+    setCanvasResetVersion((prev) => prev + 1);
   }, []);
 
   // IMPORTANT: read live values from refs so this callback, and therefore the
@@ -1499,6 +1580,7 @@ export function CustomizeScreen() {
             printArea: productCanvasConfig.printArea,
             mask: productCanvasConfig.mask,
             hasUserImage: Boolean(userImageUri),
+            hasReadyToPrintFile: Boolean(readyPrintUploadedFile?.url),
             customization: savedCustomizationDraft,
           },
           previewImage: previewDataUri,
@@ -1530,6 +1612,7 @@ export function CustomizeScreen() {
             printArea: productCanvasConfig.printArea,
             mask: productCanvasConfig.mask,
             hasUserImage: Boolean(userImageUri),
+            hasReadyToPrintFile: Boolean(readyPrintUploadedFile?.url),
             customization: savedCustomizationDraft,
           },
           previewImage: previewDataUri,
@@ -1543,7 +1626,7 @@ export function CustomizeScreen() {
         throw new Error(e?.serverMessage || e?.message || 'Failed to save your customized design.');
       }
     },
-    [passedDesignId, canvasH, canvasW, flowType, productCanvasConfig.mask, productCanvasConfig.printArea, productId, productName, savedCustomizationDraft, textLayers, userImageUri],
+    [passedDesignId, canvasH, canvasW, flowType, productCanvasConfig.mask, productCanvasConfig.printArea, productId, productName, readyPrintUploadedFile?.url, savedCustomizationDraft, textLayers, userImageUri],
   );
 
   const persistBusinessPrintConfigOrThrow = useCallback(
@@ -1563,6 +1646,7 @@ export function CustomizeScreen() {
         designType: businessDesignType,
         designId,
         previewImage: previewDataUri,
+        readyToPrintFile: readyPrintUploadedFile,
         selectedOptions: {
           size: selectedSize,
           paperType: selectedBase,
@@ -1631,8 +1715,10 @@ export function CustomizeScreen() {
                   finish: selectedInterior,
                   sides: businessSides,
                 },
+                readyToPrintFile: readyPrintUploadedFile || undefined,
               }
             : undefined,
+        readyToPrintFile: readyPrintUploadedFile || undefined,
         type: 'product',
         flowType,
         quantity: flowType === 'printing' ? businessQuantity : 1,
@@ -1649,7 +1735,7 @@ export function CustomizeScreen() {
     } catch (e: any) {
       Alert.alert('Design Save Failed', e?.message || 'Please try again.');
     }
-  }, [addItem, businessDeliveryMethod, businessDesignType, businessQuantity, businessServicePackage, businessSides, captureDesignSnapshot, navigation, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, selectedBase, selectedInterior, selectedPickupShopId, selectedSize, unitPrice, productName, stockState]);
+  }, [addItem, businessDeliveryMethod, businessDesignType, businessQuantity, businessServicePackage, businessSides, captureDesignSnapshot, navigation, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, readyPrintUploadedFile, selectedBase, selectedInterior, selectedPickupShopId, selectedSize, unitPrice, productName, stockState]);
 
   const handleAddToCart = useCallback(async () => {
     if (!stockState.inStock) {
@@ -1679,8 +1765,10 @@ export function CustomizeScreen() {
                   finish: selectedInterior,
                   sides: businessSides,
                 },
+                readyToPrintFile: readyPrintUploadedFile || undefined,
               }
             : undefined,
+        readyToPrintFile: readyPrintUploadedFile || undefined,
         type: 'product',
         flowType,
         quantity: flowType === 'printing' ? businessQuantity : 1,
@@ -1692,7 +1780,7 @@ export function CustomizeScreen() {
     } catch (e: any) {
       Alert.alert('Design Save Failed', e?.message || 'Please try again.');
     }
-  }, [addItem, businessDeliveryMethod, businessDesignType, businessQuantity, businessServicePackage, businessSides, captureDesignSnapshot, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, selectedBase, selectedInterior, selectedPickupShopId, selectedSize, unitPrice, productName, stockState]);
+  }, [addItem, businessDeliveryMethod, businessDesignType, businessQuantity, businessServicePackage, businessSides, captureDesignSnapshot, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, readyPrintUploadedFile, selectedBase, selectedInterior, selectedPickupShopId, selectedSize, unitPrice, productName, stockState]);
 
   return (
     <SafeScreen>
@@ -1747,6 +1835,7 @@ export function CustomizeScreen() {
               <View style={[styles.canvasFrame, { backgroundColor: t.chipBg }]}>
                 <View ref={previewCaptureRef} collapsable={false} style={{ width: canvasW, height: canvasH }}>
                   <SkiaProductCanvas
+                    key={`skia-canvas-${canvasResetVersion}`}
                     ref={skiaCanvasRef}
                     productImageUri={resolvedImage}
                     userImageUri={userImageUri}
@@ -1915,63 +2004,115 @@ export function CustomizeScreen() {
                 </View>
               </View>
 
-              {/* Action row: Upload / Change / Reset */}
-              <View style={styles.canvasActionsRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.canvasActionBtn,
-                    { backgroundColor: accentColor, borderColor: accentColor },
-                  ]}
-                  onPress={pickUserImage}
-                  activeOpacity={0.85}
-                >
-                  <ImagePlus size={16} color="#FFFFFF" />
-                  <Text style={[styles.canvasActionText, { color: '#FFFFFF' }]}>
-                    {userImageUri ? 'Change Photo' : 'Upload Photo'}
-                  </Text>
-                </TouchableOpacity>
-
-                {userImageUri && (
+              <View style={[styles.toolSection, { borderColor: t.border, backgroundColor: t.card }]}>
+                <Text style={[styles.toolSectionTitle, { color: t.textPrimary }]}>Photo tools</Text>
+                <View style={styles.canvasActionsRow}>
                   <TouchableOpacity
                     style={[
                       styles.canvasActionBtn,
-                      { backgroundColor: 'transparent', borderColor: t.border },
+                      { backgroundColor: accentColor, borderColor: accentColor },
                     ]}
-                    onPress={handleResetTransforms}
+                    onPress={pickUserImage}
                     activeOpacity={0.85}
                   >
-                    <RotateCcw size={16} color={t.textPrimary} />
-                    <Text style={[styles.canvasActionText, { color: t.textPrimary }]}>Reset</Text>
+                    <ImagePlus size={16} color="#FFFFFF" />
+                    <Text style={[styles.canvasActionText, { color: '#FFFFFF' }]}>
+                      {userImageUri ? 'Change Photo' : 'Upload Photo'}
+                    </Text>
                   </TouchableOpacity>
-                )}
+
+                  {userImageUri && (
+                    <TouchableOpacity
+                      style={[
+                        styles.canvasActionBtn,
+                        { backgroundColor: 'transparent', borderColor: t.border },
+                      ]}
+                      onPress={handleResetTransforms}
+                      activeOpacity={0.85}
+                    >
+                      <RotateCcw size={16} color={t.textPrimary} />
+                      <Text style={[styles.canvasActionText, { color: t.textPrimary }]}>Reset Photo</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
-              <View style={styles.canvasActionsRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.canvasActionBtn,
-                    { backgroundColor: 'transparent', borderColor: showPrintAreaEditor ? accentColor : t.border },
-                  ]}
-                  onPress={toggleAreaEditor}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.canvasActionText, { color: showPrintAreaEditor ? accentColor : t.textPrimary }]}>
-                    {showPrintAreaEditor ? 'Done Area' : 'Adjust Area'}
-                  </Text>
-                </TouchableOpacity>
-
-                {manualPrintArea && (
+              <View style={[styles.toolSection, { borderColor: t.border, backgroundColor: t.card }]}>
+                <Text style={[styles.toolSectionTitle, { color: t.textPrimary }]}>Area tools</Text>
+                <View style={styles.canvasActionsRow}>
                   <TouchableOpacity
                     style={[
                       styles.canvasActionBtn,
-                      { backgroundColor: 'transparent', borderColor: t.border },
+                      { backgroundColor: 'transparent', borderColor: showPrintAreaEditor ? accentColor : t.border },
                     ]}
-                    onPress={handleResetArea}
+                    onPress={toggleAreaEditor}
                     activeOpacity={0.85}
                   >
-                    <Text style={[styles.canvasActionText, { color: t.textPrimary }]}>Reset Area</Text>
+                    <Text style={[styles.canvasActionText, { color: showPrintAreaEditor ? accentColor : t.textPrimary }]}>
+                      {showPrintAreaEditor ? 'Done Area' : 'Adjust Area'}
+                    </Text>
                   </TouchableOpacity>
-                )}
+
+                  {manualPrintArea && (
+                    <TouchableOpacity
+                      style={[
+                        styles.canvasActionBtn,
+                        { backgroundColor: 'transparent', borderColor: t.border },
+                      ]}
+                      onPress={handleResetArea}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.canvasActionText, { color: t.textPrimary }]}>Reset Area</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              <View style={[styles.designUploadCard, { borderColor: t.border, backgroundColor: t.card }]}>
+                <View style={styles.designUploadHeader}>
+                  <View style={[styles.designUploadIconWrap, { backgroundColor: activeBg }]}>
+                    <Upload size={18} color={accentColor} />
+                  </View>
+                  <View style={styles.designUploadMeta}>
+                    <Text style={[styles.designUploadTitle, { color: t.textPrimary }]}>Ready-to-print file</Text>
+                    <Text style={[styles.designUploadSub, { color: t.textSecondary }]}>
+                      {readyPrintStatusText}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.canvasActionsRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.canvasActionBtn,
+                      { backgroundColor: 'transparent', borderColor: accentColor },
+                      uploadingReadyPrint && { opacity: 0.7 },
+                    ]}
+                    onPress={pickReadyPrintFile}
+                    activeOpacity={0.85}
+                    disabled={uploadingReadyPrint}
+                  >
+                    {uploadingReadyPrint ? (
+                      <ActivityIndicator size="small" color={accentColor} />
+                    ) : (
+                      <Upload size={16} color={accentColor} />
+                    )}
+                    <Text style={[styles.canvasActionText, { color: accentColor }]}>
+                      {readyPrintUploadedFile?.url ? 'Replace File' : 'Upload Design'}
+                    </Text>
+                  </TouchableOpacity>
+                  {readyPrintUploadedFile?.url ? (
+                    <TouchableOpacity
+                      style={[
+                        styles.canvasActionBtn,
+                        { backgroundColor: 'transparent', borderColor: t.border },
+                      ]}
+                      onPress={clearReadyPrintFile}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.canvasActionText, { color: t.textPrimary }]}>Remove File</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
 
               <View style={[styles.textEditorCard, { backgroundColor: t.card, borderColor: t.border }]}>
@@ -2372,6 +2513,18 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 12,
   },
+  toolSection: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    marginTop: 12,
+  },
+  toolSectionTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+  },
   canvasActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2392,6 +2545,39 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 12,
     marginTop: 12,
+  },
+  designUploadCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    marginTop: 12,
+  },
+  designUploadHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  designUploadIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  designUploadMeta: {
+    flex: 1,
+    gap: 4,
+  },
+  designUploadTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+  },
+  designUploadSub: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    lineHeight: 18,
   },
   textEditorTitle: {
     fontFamily: 'Poppins_600SemiBold',

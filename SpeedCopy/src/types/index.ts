@@ -13,10 +13,28 @@ export interface Product {
 
 export interface CartItem {
   id: string;
+  productId?: string;
   backendProductId?: string;
+  thumbnail?: string;
+  variantSnapshot?: any;
+  variant_snapshot?: any;
+  productSnapshot?: any;
+  product_snapshot?: any;
+  snapshot?: any;
   designId?: string;
   printConfigId?: string;
   businessPrintConfigId?: string;
+  readyToPrintFile?: {
+    _id?: string;
+    url: string;
+    name: string;
+    mimeType?: string;
+    size?: number;
+    pageCount?: number;
+    previewImage?: string;
+    thumbnailUrl?: string;
+    previewUrl?: string;
+  };
   businessConfigDraft?: {
     quantity?: number;
     deliveryMethod?: 'pickup' | 'delivery';
@@ -28,6 +46,17 @@ export interface CartItem {
       paperType?: string;
       finish?: string;
       sides?: string;
+    };
+    readyToPrintFile?: {
+      _id?: string;
+      url: string;
+      name: string;
+      mimeType?: string;
+      size?: number;
+      pageCount?: number;
+      previewImage?: string;
+      thumbnailUrl?: string;
+      previewUrl?: string;
     };
   };
   product?: Product;

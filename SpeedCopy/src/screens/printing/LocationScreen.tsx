@@ -24,13 +24,6 @@ type LocationItem = {
   etaLabel: string;
 };
 
-function getPickupFallbackEta(servicePackage?: string): string {
-  const normalized = String(servicePackage || '').trim().toLowerCase();
-  if (normalized.includes('instant')) return 'Ready in 45 min';
-  if (normalized.includes('express')) return 'Ready in 1.5 hours';
-  return 'Ready in 2 hours';
-}
-
 export const LocationScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
@@ -72,7 +65,7 @@ export const LocationScreen: React.FC = () => {
               title,
               address: [addressParts.join(', '), pincode].filter(Boolean).join(' - '),
               pincode,
-              etaLabel: resolvePickupEtaLabel(loc, pickupEtaLabel || getPickupFallbackEta(servicePackage)),
+              etaLabel: resolvePickupEtaLabel(loc, pickupEtaLabel || ''),
             };
           })
           .filter((loc) => Boolean(loc.id && loc.address));
@@ -103,7 +96,7 @@ export const LocationScreen: React.FC = () => {
       deliveryMode,
       locationId: location.id,
       servicePackage,
-      pickupEtaLabel: location.etaLabel,
+      pickupEtaLabel: location.etaLabel || undefined,
       pickupLocationTitle: location.title,
     });
   }, [deliveryMode, navigation, servicePackage, subService]);
@@ -158,7 +151,7 @@ export const LocationScreen: React.FC = () => {
           >
             <Text style={[styles.locationTitle, { color: t.textPrimary }]}>{location.title}</Text>
             <Text style={[styles.locationText, { color: t.textSecondary }]}>{location.address}</Text>
-            <Text style={styles.locationEta}>{location.etaLabel}</Text>
+            {location.etaLabel ? <Text style={styles.locationEta}>{location.etaLabel}</Text> : null}
           </TouchableOpacity>
         ))}
         {!loading && filtered.length === 0 && (

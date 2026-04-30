@@ -113,7 +113,7 @@ function formatPickupByDate(date: Date): string {
   return `Pickup by ${dayText}, ${timeText}`;
 }
 
-export function resolvePickupEtaLabel(source: any, fallbackLabel = 'Ready in 2 hours'): string {
+export function resolvePickupEtaLabel(source: any, fallbackLabel = ''): string {
   const directLabel = parseEtaLabel(source);
   if (directLabel) return directLabel;
 

@@ -62,15 +62,19 @@ function shadow(e = 2) {
   });
 }
 
-function buildTrackingSteps(): TrackingStep[] {
+function buildTrackingSteps(isPickup = false): TrackingStep[] {
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   return [
     { title: 'Order Confirmed', subtitle: 'Your order has been received and is being processed', time: `${dateStr}, ${timeStr}`, completed: true, active: false },
     { title: 'Printing', subtitle: 'Quality Check completed', time: '', completed: true, active: false },
-    { title: 'Out for delivery', subtitle: 'We will notify you when the rider is on the way', time: '', completed: false, active: true },
-    { title: 'Delivered', subtitle: 'Your order has been delivered', time: '', completed: false, active: false },
+    isPickup
+      ? { title: 'Preparing for pickup', subtitle: 'We will notify you when the store marks it ready', time: '', completed: false, active: true }
+      : { title: 'Out for delivery', subtitle: 'We will notify you when the rider is on the way', time: '', completed: false, active: true },
+    isPickup
+      ? { title: 'Picked up', subtitle: 'Your order has been collected from the store', time: '', completed: false, active: false }
+      : { title: 'Delivered', subtitle: 'Your order has been delivered', time: '', completed: false, active: false },
   ];
 }
 
@@ -312,6 +316,7 @@ export function PaymentMethodScreen() {
             designId: i.designId,
             printConfigId: i.printConfigId,
             businessPrintConfigId: i.businessPrintConfigId,
+            readyToPrintFile: i.readyToPrintFile,
             thumbnail: i.image,
           };
         }),
@@ -397,7 +402,7 @@ export function PaymentMethodScreen() {
             pincode: '',
             isDefault: false,
           },
-          trackingSteps: buildTrackingSteps(),
+          trackingSteps: buildTrackingSteps(Boolean(pickupShopIdForOrder)),
         });
         addNotification({
           _id: `local-${backendOrder._id}-${Date.now()}`,
@@ -459,7 +464,7 @@ export function PaymentMethodScreen() {
       total: Number.isFinite(Number(backendOrder.total)) ? Math.max(0, Number(backendOrder.total)) : totalPayable,
       date: new Date().toISOString().slice(0, 10),
       address: orderAddress,
-      trackingSteps: buildTrackingSteps(),
+      trackingSteps: buildTrackingSteps(Boolean(pickupShopIdForOrder)),
     };
     addOrder(localOrder);
     addNotification({

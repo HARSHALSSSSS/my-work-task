@@ -11,6 +11,17 @@ export interface BackendCartItem {
   printConfigId?: string;
   businessPrintConfigId?: string;
   designId?: string;
+  readyToPrintFile?: {
+    _id?: string;
+    url: string;
+    name: string;
+    mimeType?: string;
+    size?: number;
+    pageCount?: number;
+    previewImage?: string;
+    thumbnailUrl?: string;
+    previewUrl?: string;
+  };
   variantId?: string;
   variantIndex?: number;
   quantity: number;
@@ -41,6 +52,17 @@ export async function addToCart(body: {
   printConfigId?: string;
   businessPrintConfigId?: string;
   designId?: string;
+  readyToPrintFile?: {
+    _id?: string;
+    url: string;
+    name: string;
+    mimeType?: string;
+    size?: number;
+    pageCount?: number;
+    previewImage?: string;
+    thumbnailUrl?: string;
+    previewUrl?: string;
+  };
 }): Promise<BackendCart> {
   const { data } = await api.post<Res<BackendCart>>('/api/orders/cart', body);
   return data.data;

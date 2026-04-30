@@ -939,10 +939,10 @@ export const StandardPrintingScreen: React.FC = () => {
         <Text style={[styles.heading, { color: t.textPrimary }]}>{serviceTitle}</Text>
         <Text style={[styles.subheading, { color: t.textSecondary }]}>Upload your file, configure options and proceed to cart.</Text>
 
-        {deliveryMode === 'pickup' ? (
-          <View style={[styles.pickupEtaCard, { borderColor: t.border, backgroundColor: t.card }]}> 
+        {deliveryMode === 'pickup' && pickupEtaLabel ? (
+          <View style={[styles.pickupEtaCard, { borderColor: t.border, backgroundColor: t.card }]}>
             <Text style={[styles.pickupEtaTitle, { color: t.textPrimary }]}>Pickup ready time</Text>
-            <Text style={[styles.pickupEtaValue, { color: '#0F766E' }]}>{pickupEtaLabel || 'Ready in 2 hours'}</Text>
+            <Text style={[styles.pickupEtaValue, { color: '#0F766E' }]}>{pickupEtaLabel}</Text>
             {pickupLocationTitle ? (
               <Text style={[styles.pickupEtaSub, { color: t.textSecondary }]} numberOfLines={1}>
                 Selected location: {pickupLocationTitle}

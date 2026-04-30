@@ -144,7 +144,7 @@ export const PackagesScreen: React.FC = () => {
         .filter(Boolean)
         .join(', ')
     : 'Select a location';
-  const pickupEtaPreview = resolvePickupEtaLabel(primaryAddress, 'Ready in 2 hours');
+  const pickupEtaPreview = resolvePickupEtaLabel(primaryAddress, '');
 
   useFocusEffect(useCallback(() => {
     productsApi.getServicePackages()
@@ -197,7 +197,7 @@ export const PackagesScreen: React.FC = () => {
     navigation.navigate('Location', {
       subService,
       deliveryMode: 'pickup',
-      pickupEtaLabel: pickupEtaPreview,
+      pickupEtaLabel: pickupEtaPreview || undefined,
     });
   }, [navigation, pickupEtaPreview, subService]);
 
@@ -227,7 +227,13 @@ export const PackagesScreen: React.FC = () => {
               <View style={styles.greenDot} />
               <Text style={[styles.locationAddr, { color: t.textPrimary }]} numberOfLines={2}>{currentLocationText}</Text>
             </View>
-            <Text style={styles.pickupEtaLabel}>Pickup ETA: {pickupEtaPreview}</Text>
+            {pickupEtaPreview ? (
+              <Text style={styles.pickupEtaLabel}>Pickup ETA: {pickupEtaPreview}</Text>
+            ) : (
+              <Text style={[styles.pickupEtaLabel, styles.pickupEtaMuted]}>
+                Pickup timing will appear after store selection
+              </Text>
+            )}
           </View>
           <TouchableOpacity style={[styles.changePill, { borderColor: t.border }]} activeOpacity={0.8} onPress={onChangeLocation}>
             <Text style={styles.changeLink}>Change</Text>
@@ -385,6 +391,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     color: '#0F766E',
     marginTop: Spacing.xs,
+  },
+  pickupEtaMuted: {
+    color: '#6B7280',
   },
   changeLink: {
     ...Typography.bodySm,

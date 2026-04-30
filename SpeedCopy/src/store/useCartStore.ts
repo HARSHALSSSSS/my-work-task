@@ -98,6 +98,7 @@ function mapBackendToLocal(
         designId: bi.designId || localMatch?.designId,
         printConfigId: bi.printConfigId || localMatch?.printConfigId,
         businessPrintConfigId: bi.businessPrintConfigId || localMatch?.businessPrintConfigId,
+        readyToPrintFile: bi.readyToPrintFile || localMatch?.readyToPrintFile,
         type:
           bi.flowType === 'printing'
             ? 'printing' as const
@@ -198,6 +199,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         printConfigId: item.printConfigId,
         businessPrintConfigId: item.businessPrintConfigId,
         designId: item.designId,
+        readyToPrintFile: item.readyToPrintFile,
       });
       set({ backendCartId: backendCart._id || null });
     } catch { /* local state already updated */ }

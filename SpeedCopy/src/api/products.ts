@@ -407,6 +407,7 @@ export interface SaveBusinessPrintConfigBody {
   deliveryMethod: 'pickup' | 'delivery';
   shopId?: string;
   servicePackage?: 'standard' | 'express' | 'instant' | '';
+  readyToPrintFile?: UploadedFile | null;
 }
 
 export async function saveBusinessPrintConfig(body: SaveBusinessPrintConfigBody) {

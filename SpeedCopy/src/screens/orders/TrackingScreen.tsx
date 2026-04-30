@@ -26,6 +26,7 @@ import { resolveProductImageSource } from '../../utils/product';
 import * as ordersApi from '../../api/orders';
 import * as deliveryApi from '../../api/delivery';
 import { useSocketEvent } from '../../hooks/useSocket';
+import { resolvePickupEtaLabel } from '../../utils/pickupEta';
 
 /** Screen is registered on Cart, Profile, and Orders stacks; cart + tab covers navigate-to-tab cases. */
 type TrackingNav = CompositeNavigationProp<
@@ -164,6 +165,21 @@ function getOrderHeroSubtitle(order: Order): string {
   }
 }
 
+function hasMeaningfulAddress(address?: Order['address']): boolean {
+  if (!address) return false;
+  return Boolean(
+    address.line1
+    || address.line2
+    || address.city
+    || address.state
+    || address.pincode,
+  );
+}
+
+function formatAddressParts(parts: Array<string | undefined>): string {
+  return parts.map((part) => String(part || '').trim()).filter(Boolean).join(', ');
+}
+
 export const TrackingScreen: React.FC = () => {
   const { colors: t } = useThemeStore();
   const insets = useSafeAreaInsets();
@@ -179,7 +195,35 @@ export const TrackingScreen: React.FC = () => {
   const steps = useMemo(() => (order ? mapSteps(order) : []), [order]);
 
   const [deliveryEta, setDeliveryEta] = useState<number | undefined>();
+  const [pickupEtaLabel, setPickupEtaLabel] = useState('');
+  const [deliveryTracking, setDeliveryTracking] = useState<deliveryApi.DeliveryTracking | null>(null);
   const footerBottomPadding = Math.max(Spacing.xl, FLOATING_TAB_SAFE_CLEARANCE + insets.bottom);
+  const isLikelyPickupOrder = useMemo(() => (
+    Boolean(deliveryTracking?.pickup)
+    || Boolean(order?.address?.id?.startsWith('pickup-'))
+    || !hasMeaningfulAddress(order?.address)
+  ), [deliveryTracking?.pickup, order?.address]);
+  const pickupLocationName = String(deliveryTracking?.pickup?.name || '').trim();
+  const pickupAddress = formatAddressParts([
+    deliveryTracking?.pickup?.address,
+    deliveryTracking?.pickup?.addressLine,
+  ]);
+  const etaHeadline = isLikelyPickupOrder
+    ? pickupEtaLabel
+    : deliveryEta != null
+      ? `Arriving in about ${deliveryEta} min`
+      : '';
+  const statusCardTitle = isLikelyPickupOrder ? 'Pickup status' : 'Delivery status';
+  const statusCardSubtitle = isLikelyPickupOrder
+    ? (pickupLocationName || 'Store pickup selected')
+    : 'Live delivery estimate';
+  const statusCardMeta = isLikelyPickupOrder
+    ? pickupAddress
+    : formatAddressParts([
+        order?.address?.line1,
+        order?.address?.line2,
+        order?.address ? `${order.address.city}, ${order.address.state} ${order.address.pincode}` : '',
+      ]);
 
   // Listen for real-time order status updates
   useSocketEvent('order:statusUpdate', (data: any) => {
@@ -202,8 +246,15 @@ export const TrackingScreen: React.FC = () => {
 
   // Listen for real-time delivery location updates
   useSocketEvent('delivery:location', (data: any) => {
-    if (data?.orderId === orderId && data.etaMinutes) {
+    if (data?.orderId !== orderId) return;
+
+    if (data.etaMinutes) {
       setDeliveryEta(data.etaMinutes);
+    }
+
+    const nextPickupEta = resolvePickupEtaLabel(data, '');
+    if (nextPickupEta) {
+      setPickupEtaLabel(nextPickupEta);
     }
   });
 
@@ -304,26 +355,36 @@ export const TrackingScreen: React.FC = () => {
       });
 
     deliveryApi.trackDelivery(orderId)
-      .then((res) => { if (res.etaMinutes) setDeliveryEta(res.etaMinutes); })
+      .then((res) => {
+        setDeliveryTracking(res);
+        if (res.etaMinutes) setDeliveryEta(res.etaMinutes);
+        const nextPickupEta = resolvePickupEtaLabel(res, '');
+        if (nextPickupEta) setPickupEtaLabel(nextPickupEta);
+      })
       .catch(() => {});
   }, [orderId]);
 
   const onTrackMap = useCallback(() => {
     if (!order) return;
-    const q = [
-      order.address.line1,
-      order.address.line2,
-      `${order.address.city}, ${order.address.state} ${order.address.pincode}`,
-    ]
-      .filter(Boolean)
-      .join(', ');
+    const q = isLikelyPickupOrder
+      ? formatAddressParts([
+          pickupLocationName,
+          deliveryTracking?.pickup?.address,
+          deliveryTracking?.pickup?.addressLine,
+        ])
+      : formatAddressParts([
+          order.address.line1,
+          order.address.line2,
+          `${order.address.city}, ${order.address.state} ${order.address.pincode}`,
+        ]);
+    if (!q) return;
     const url = Platform.select({
       ios: `maps:0,0?q=${encodeURIComponent(q)}`,
       android: `geo:0,0?q=${encodeURIComponent(q)}`,
       default: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`,
     });
     Linking.openURL(url);
-  }, [order]);
+  }, [deliveryTracking?.pickup?.address, deliveryTracking?.pickup?.addressLine, isLikelyPickupOrder, order, pickupLocationName]);
 
   const onHelp = useCallback(() => {
     navigation.getParent()?.navigate('ProfileTab', { screen: 'Support' });
@@ -378,9 +439,48 @@ export const TrackingScreen: React.FC = () => {
           </View>
           <Text style={[styles.confirmedTitle, { color: t.textPrimary }]}>{heroTitle}</Text>
           <Text style={[styles.metaLine, { color: t.textSecondary }]}>{heroSubtitle}</Text>
-          <Text style={[styles.metaLine, { color: t.textSecondary }]}>Order Id: {idLabel}</Text>
-          <Text style={[styles.metaLine, { color: t.textSecondary }]}>Order Total: {formatCurrency(order.total)}</Text>
+          <View style={[styles.heroMetaPill, { backgroundColor: t.card, borderColor: t.divider }]}>
+            <Text style={[styles.heroMetaText, { color: t.textSecondary }]}>Order Id: {idLabel}</Text>
+            <View style={[styles.heroMetaDivider, { backgroundColor: t.divider }]} />
+            <Text style={[styles.heroMetaText, { color: t.textSecondary }]}>Total: {formatCurrency(order.total)}</Text>
+          </View>
         </View>
+
+        {(etaHeadline || statusCardMeta || statusCardSubtitle) ? (
+          <View style={[styles.statusCard, cardShadow, { backgroundColor: t.card, borderColor: t.divider }]}>
+            <View style={styles.statusCardHeader}>
+              <View style={styles.statusCardCopy}>
+                <Text style={[styles.statusCardLabel, { color: t.textSecondary }]}>{statusCardTitle}</Text>
+                <Text style={[styles.statusCardTitle, { color: t.textPrimary }]}>{statusCardSubtitle}</Text>
+              </View>
+              {etaHeadline ? (
+                <View style={styles.statusEtaChip}>
+                  <Text style={styles.statusEtaChipText}>{etaHeadline}</Text>
+                </View>
+              ) : null}
+            </View>
+            {statusCardMeta ? (
+              <View style={styles.statusCardMetaRow}>
+                <MapPin size={16} color={t.iconDefault} />
+                <Text style={[styles.statusCardMetaText, { color: t.textSecondary }]}>{statusCardMeta}</Text>
+              </View>
+            ) : null}
+            <View style={styles.actionRow}>
+              <ButtonOutline
+                icon={<MapPin size={18} color={t.iconDefault} />}
+                label={isLikelyPickupOrder ? 'View Pickup Location' : 'Track on Map'}
+                onPress={onTrackMap}
+                containerStyle={styles.actionBtn}
+              />
+              <ButtonOutline
+                icon={<HelpCircle size={18} color={t.iconDefault} />}
+                label="Need Help?"
+                onPress={onHelp}
+                containerStyle={styles.actionBtn}
+              />
+            </View>
+          </View>
+        ) : null}
 
         <Text style={[styles.sectionTitle, { color: t.textPrimary }]}>Order Status</Text>
 
@@ -422,25 +522,11 @@ export const TrackingScreen: React.FC = () => {
       </ScrollView>
 
       <View style={[styles.footer, { borderTopColor: t.divider, backgroundColor: t.background, paddingBottom: footerBottomPadding }]}>
-        {deliveryEta != null && (
-          <View style={[styles.etaBanner, { backgroundColor: Colors.green + '18' }]}>
-            <Text style={styles.etaText}>ETA: ~{deliveryEta} min</Text>
-          </View>
-        )}
-        <View style={styles.actionRow}>
-          <ButtonOutline
-            icon={<MapPin size={18} color={t.iconDefault} />}
-            label="Track on Map"
-            onPress={onTrackMap}
-            containerStyle={styles.actionBtn}
-          />
-          <ButtonOutline
-            icon={<HelpCircle size={18} color={t.iconDefault} />}
-            label="Need Help?"
-            onPress={onHelp}
-            containerStyle={styles.actionBtn}
-          />
-        </View>
+        <Text style={[styles.footerNote, { color: t.textMuted }]}>
+          {isLikelyPickupOrder
+            ? 'Pickup readiness updates will appear here as soon as the store sends them.'
+            : 'Live tracking updates will appear here as the order moves closer to you.'}
+        </Text>
       </View>
     </SafeScreen>
   );
@@ -563,6 +649,79 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: Colors.textSecondary,
   },
+  heroMetaPill: {
+    marginTop: Spacing.md,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  heroMetaText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  heroMetaDivider: {
+    width: 1,
+    height: 14,
+  },
+  statusCard: {
+    borderRadius: Radii.section,
+    borderWidth: 1,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  statusCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  statusCardCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  statusCardLabel: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    lineHeight: 18,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  statusCardTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  statusEtaChip: {
+    backgroundColor: '#0F766E14',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  statusEtaChipText: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#0F766E',
+  },
+  statusCardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  statusCardMetaText: {
+    flex: 1,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 13,
+    lineHeight: 20,
+  },
   sectionTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 16,
@@ -670,6 +829,12 @@ const styles = StyleSheet.create({
       android: { elevation: 8 },
     }),
   },
+  footerNote: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   outlineBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -714,18 +879,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
-  },
-  etaBanner: {
-    width: '100%',
-    paddingVertical: 8,
-    borderRadius: Radii.button,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  etaText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
-    color: Colors.green,
   },
 });
 

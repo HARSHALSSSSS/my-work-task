@@ -13,6 +13,17 @@ export interface OrderItem {
   printConfigId?: string;
   businessPrintConfigId?: string;
   designId?: string;
+  readyToPrintFile?: {
+    _id?: string;
+    url: string;
+    name: string;
+    mimeType?: string;
+    size?: number;
+    pageCount?: number;
+    previewImage?: string;
+    thumbnailUrl?: string;
+    previewUrl?: string;
+  };
 }
 
 export interface BackendOrder {

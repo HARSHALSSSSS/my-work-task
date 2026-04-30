@@ -11,7 +11,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { Spacing } from '../../constants/theme';
 import { Product } from '../../types';
 import * as productsApi from '../../api/products';
-import { isLikelyMongoId, toAbsoluteAssetUrl } from '../../utils/product';
+import { isLikelyMongoId, resolveProductImageSource, toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
 import { isCatalogProductInStock } from '../../utils/stock';
 
@@ -42,16 +42,18 @@ export const WishlistScreen: React.FC = () => {
           ? productsApi
               .getProductById(id)
               .then(
-                (p) =>
-                  ({
+                (p) => {
+                  const resolvedImage = resolveProductImageSource(p);
+                  return ({
                     id: p._id,
                     name: p.name,
                     description: p.description || '',
                     price: resolveProductPricing(p).price,
-                    image: toAbsoluteAssetUrl(p.thumbnail || p.images?.[0]),
+                    image: resolvedImage.imageUri || toAbsoluteAssetUrl(p.thumbnail || p.images?.[0]),
                     category: p.slug || '',
                     inStock: isCatalogProductInStock(p),
-                  } as Product),
+                  } as Product);
+                },
               )
               .catch(
                 () =>

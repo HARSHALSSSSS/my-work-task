@@ -18,6 +18,7 @@ import {
   Heart,
   Minus,
   Plus,
+  Share2,
   Truck,
   RotateCcw,
   Shield,
@@ -34,6 +35,7 @@ import { getProductImageUrl, isLikelyMongoId, toAbsoluteAssetUrl } from '../../u
 import { resolveProductPricing } from '../../utils/pricing';
 import { getLiveStockState, LiveStockState } from '../../utils/stock';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { shareProduct } from '../../utils/shareProduct';
 
 type Nav = NativeStackNavigationProp<HomeTabStackParamList, 'StationeryDetail'>;
 type Route = RouteProp<HomeTabStackParamList, 'StationeryDetail'>;
@@ -216,6 +218,20 @@ export function StationeryDetailScreen() {
     setQuantity(Math.max(1, Math.min(999, Number(cleaned))));
   }, []);
 
+  const handleShareProduct = useCallback(async () => {
+    try {
+      await shareProduct({
+        productId,
+        productName: product.name,
+        flowType: 'shopping',
+        price: product.price,
+        imageUrl: selectedGalleryUri || imageUri || product.imageUri,
+      });
+    } catch {
+      // Keep the product page calm and commerce-like on failure.
+    }
+  }, [imageUri, product.imageUri, product.name, product.price, productId, selectedGalleryUri]);
+
   return (
     <SafeScreen>
       {/* Header */}
@@ -268,7 +284,18 @@ export function StationeryDetailScreen() {
 
         {/* Product Info */}
         <View style={styles.infoSection}>
-          <Text style={[styles.productName, { color: t.textPrimary }]}>{product.name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[styles.productName, { color: t.textPrimary }]}>{product.name}</Text>
+            <TouchableOpacity
+              style={[styles.shareBtn, { borderColor: t.border, backgroundColor: t.card }]}
+              onPress={handleShareProduct}
+              hitSlop={10}
+              activeOpacity={0.85}
+            >
+              <Share2 size={15} color={t.textPrimary} />
+              <Text style={[styles.shareBtnText, { color: t.textPrimary }]}>Share</Text>
+            </TouchableOpacity>
+          </View>
         <View style={styles.priceRow}>
             <Text style={[styles.price, { color: t.textPrimary }]}>{formatCurrency(product.price)}</Text>
             {product.originalPrice && (
@@ -463,11 +490,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     marginBottom: 10,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
   productName: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 18,
     lineHeight: 26,
     color: '#242424',
+    flex: 1,
+  },
+  shareBtn: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 1,
+  },
+  shareBtnText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
   },
   priceRow: {
     flexDirection: 'row',

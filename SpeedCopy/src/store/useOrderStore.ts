@@ -119,7 +119,14 @@ function mapBackendOrder(o: ordersApi.BackendOrder): Order {
 
       return {
         id: i.productId,
+        productId: i.productId,
         backendProductId: i.productId,
+        thumbnail: source?.thumbnail || source?.image || '',
+        variantSnapshot: source?.variantSnapshot,
+        variant_snapshot: source?.variant_snapshot,
+        productSnapshot: source?.productSnapshot,
+        product_snapshot: source?.product_snapshot,
+        snapshot: source?.snapshot,
         designId: i.designId,
         printConfigId: i.printConfigId,
         type: i.flowType === 'printing' ? 'printing' as const : i.flowType === 'gifting' ? 'gifting' as const : 'product' as const,

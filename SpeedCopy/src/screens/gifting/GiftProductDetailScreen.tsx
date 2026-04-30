@@ -16,9 +16,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   ChevronLeft,
   Heart,
-  Link2,
   Minus,
   Plus,
+  Share2,
   Truck,
   RotateCcw,
   Shield,
@@ -304,8 +304,14 @@ export function GiftProductDetailScreen() {
         <View style={styles.infoSection}>
           <View style={styles.nameRow}>
             <Text style={[styles.productName, { color: t.textPrimary }]}>{product.name}</Text>
-            <TouchableOpacity onPress={handleShareProduct} hitSlop={10}>
-              <Link2 size={16} color={t.placeholder} />
+            <TouchableOpacity
+              style={[styles.shareBtn, { borderColor: t.border, backgroundColor: t.card }]}
+              onPress={handleShareProduct}
+              hitSlop={10}
+              activeOpacity={0.85}
+            >
+              <Share2 size={15} color={t.textPrimary} />
+              <Text style={[styles.shareBtnText, { color: t.textPrimary }]}>Share</Text>
             </TouchableOpacity>
           </View>
         <View style={styles.priceRow}>
@@ -514,8 +520,8 @@ const styles = StyleSheet.create({
   },
   nameRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    alignItems: 'flex-start',
+    gap: 10,
     marginBottom: 2,
   },
   productName: {
@@ -524,6 +530,20 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: '#242424',
     flex: 1,
+  },
+  shareBtn: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 1,
+  },
+  shareBtnText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
   },
   priceRow: {
     flexDirection: 'row',
