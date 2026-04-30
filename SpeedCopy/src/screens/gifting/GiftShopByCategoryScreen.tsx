@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
     marginHorizontal: Spacing.lg,
     paddingHorizontal: 2,
-    height: 44,
+    minHeight: 44,
     gap: 10,
     marginBottom: Spacing.md,
   },
@@ -304,6 +304,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#242424',
     paddingVertical: 0,
+    lineHeight: 20,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   loadingWrap: {
     flex: 1,

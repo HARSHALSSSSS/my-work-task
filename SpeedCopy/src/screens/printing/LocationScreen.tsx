@@ -192,6 +192,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
     padding: 0,
+    lineHeight: 20,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   scroll: {
     paddingTop: 8,

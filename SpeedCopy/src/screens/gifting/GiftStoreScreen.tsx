@@ -723,8 +723,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bannerWrap: {
-    marginHorizontal: 12,
-    borderRadius: 10,
+    marginHorizontal: 10,
+    borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 16,
     marginTop: 4,
@@ -732,11 +732,11 @@ const styles = StyleSheet.create({
   },
   bannerImage: {
     width: '100%',
-    height: scale(132),
+    height: scale(144),
   },
   bannerImageLarge: {
     width: '100%',
-    height: scale(118),
+    height: scale(108),
   },
   bannerOverlay: {
     position: 'absolute',

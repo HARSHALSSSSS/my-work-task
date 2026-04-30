@@ -267,6 +267,9 @@ const styles = StyleSheet.create({
     ...Typography.body,
     flex: 1,
     paddingVertical: 0,
+    lineHeight: 20,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   chipsContainer: {
     flexGrow: 0,
