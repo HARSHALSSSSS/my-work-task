@@ -21,7 +21,7 @@ import * as designsApi from '../../api/designs';
 import * as productsApi from '../../api/products';
 import { toAbsoluteAssetUrl } from '../../utils/product';
 import { resolveProductPricing } from '../../utils/pricing';
-import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
+import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'BusinessPremiumDesigns'>;
 
@@ -38,8 +38,6 @@ type PremiumItem = {
   discount?: string;
   source: 'template';
 };
-
-const FALLBACK_BANNER = require('../../../assets/images/print-cat-business.png');
 
 export const BusinessPremiumDesignsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -122,8 +120,6 @@ export const BusinessPremiumDesignsScreen: React.FC = () => {
     return list;
   }, [items, query, selectedChip, templateFilter]);
 
-  const bannerUri = toAbsoluteAssetUrl(productImage) || Image.resolveAssetSource(FALLBACK_BANNER).uri;
-
   return (
     <SafeScreen>
       <View style={styles.header}>
@@ -135,14 +131,6 @@ export const BusinessPremiumDesignsScreen: React.FC = () => {
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <View style={styles.bannerWrap}>
-          <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
-          <View style={styles.bannerOverlay}>
-            <Text style={styles.bannerTitle}>{productName || 'Business Product'}</Text>
-            <Text style={styles.bannerSub}>Select a premium template to continue</Text>
-          </View>
-        </View>
-
         <View style={[styles.searchRow, { backgroundColor: t.inputBg, borderColor: t.searchBorder }]}> 
           <Search size={18} color={t.placeholder} />
           <TextInput
@@ -261,29 +249,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: 100,
   },
-  bannerWrap: {
-    borderRadius: Radii.section,
-    overflow: 'hidden',
-    marginBottom: Spacing.sm,
-  },
-  bannerImage: {
-    width: '100%',
-    height: scale(148),
-  },
-  bannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    justifyContent: 'flex-end',
-    padding: Spacing.md,
-  },
-  bannerTitle: {
-    ...Typography.h3,
-    color: '#FFFFFF',
-  },
-  bannerSub: {
-    ...Typography.caption,
-    color: 'rgba(255,255,255,0.9)',
-  },
+
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

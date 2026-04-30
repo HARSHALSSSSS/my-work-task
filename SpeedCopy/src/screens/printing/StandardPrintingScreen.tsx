@@ -10,12 +10,16 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, ChevronUp, ChevronDown, CloudUpload, FileText } from 'lucide-react-native';
+import { ChevronLeft, ChevronUp, ChevronDown, CloudUpload, FileText, Maximize2, X } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import { WebView } from 'react-native-webview';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import { PrintStackParamList } from '../../navigation/types';
 import { useCartStore } from '../../store/useCartStore';
@@ -25,6 +29,7 @@ import * as productsApi from '../../api/products';
 import { QuantityPicker } from '../../components/ui/QuantityPicker';
 import { Input } from '../../components/ui/Input';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
+import { toAbsoluteAssetUrl } from '../../utils/product';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'StandardPrinting'>;
 type Route = RouteProp<PrintStackParamList, 'StandardPrinting'>;
@@ -184,6 +189,43 @@ function isImageLikeFile(name?: string, uri?: string) {
   return ['.png', '.jpg', '.jpeg', '.webp'].some((ext) => source.includes(ext));
 }
 
+type PreviewKind = 'image' | 'pdf' | 'doc' | 'unknown';
+
+function resolvePreviewKind(name?: string, mimeType?: string, uri?: string): PreviewKind {
+  if (isImageLikeFile(name, uri)) return 'image';
+
+  const ext = getExtension(name || uri);
+  const normalizedMime = String(mimeType || '').toLowerCase();
+  if (normalizedMime.includes('pdf') || ext === 'pdf') return 'pdf';
+  if (normalizedMime.includes('msword') || normalizedMime.includes('wordprocessingml') || ext === 'doc' || ext === 'docx') {
+    return 'doc';
+  }
+
+  return 'unknown';
+}
+
+function normalizePreviewUri(uri?: string): string {
+  const raw = String(uri || '').trim();
+  if (!raw) return '';
+  if (/^(https?:|file:|content:|data:)/i.test(raw)) return raw;
+  if (raw.startsWith('/')) return `file://${raw}`;
+  return raw;
+}
+
+function isRemoteHttpUrl(uri?: string): boolean {
+  return /^https?:\/\//i.test(String(uri || '').trim());
+}
+
+function resolveEmbeddedPreviewUri(uri?: string, kind: PreviewKind): string {
+  const normalized = normalizePreviewUri(uri);
+  if (!normalized) return '';
+  if (kind === 'doc') {
+    if (!isRemoteHttpUrl(normalized)) return '';
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(normalized)}`;
+  }
+  return normalized;
+}
+
 function formatPreviewName(fileName?: string) {
   if (!fileName) return 'File ready for print';
   if (fileName.length <= 35) return fileName;
@@ -281,10 +323,16 @@ export const StandardPrintingScreen: React.FC = () => {
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
 
   const showThesisSpineText = subService === 'thesis' && bindingCover.includes('strip');
-  const previewUri = uploadedFile?.url || fileUri;
-  const isImagePreview = isImageLikeFile(fileName || uploadedFile?.name, previewUri);
+  const previewUri = uploadedFile?.url ? toAbsoluteAssetUrl(uploadedFile.url) : fileUri;
+  const previewFileName = fileName || uploadedFile?.name;
+  const previewMimeType = fileMime || uploadedFile?.mimeType;
+  const previewKind = resolvePreviewKind(previewFileName, previewMimeType, previewUri);
+  const previewDisplayUri = normalizePreviewUri(previewUri);
+  const embeddedPreviewUri = resolveEmbeddedPreviewUri(previewDisplayUri, previewKind);
+  const canOpenPreviewModal = Boolean(previewDisplayUri) && (previewKind === 'image' || previewKind === 'pdf' || previewKind === 'doc');
   const serviceTitle = `${subService.charAt(0).toUpperCase()}${subService.slice(1)} Printing`;
   const hasSecondaryValues = Boolean(instructions.trim() || linearGraph > 0 || semiLogGraph > 0);
 
@@ -295,6 +343,10 @@ export const StandardPrintingScreen: React.FC = () => {
   useEffect(() => {
     if (hasSecondaryValues) setShowSecondaryDetails(true);
   }, [hasSecondaryValues]);
+
+  useEffect(() => {
+    if (!canOpenPreviewModal) setPreviewModalVisible(false);
+  }, [canOpenPreviewModal]);
 
   const buildConfigPayload = useCallback(
     (file?: productsApi.UploadedFile | null, priceOnly = false) => {
@@ -403,6 +455,7 @@ export const StandardPrintingScreen: React.FC = () => {
       setFileName(asset.name ?? 'Selected file');
       setFileMime(asset.mimeType || undefined);
       setUploadedFile(null);
+      setPreviewModalVisible(false);
 
       setUploading(true);
       try {
@@ -785,20 +838,43 @@ export const StandardPrintingScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
 
-        {previewUri ? (
+        {previewDisplayUri ? (
           <View style={[styles.previewBlock, { borderColor: t.border, backgroundColor: t.card }]}> 
-            <Text style={[styles.previewTitle, { color: t.textPrimary }]}>Preview</Text>
-            <View style={[styles.previewBody, { backgroundColor: t.chipBg }]}> 
-              {isImagePreview ? (
-                <Image source={{ uri: previewUri }} resizeMode="cover" style={styles.previewImage} />
+            <View style={styles.previewHeaderRow}>
+              <Text style={[styles.previewTitle, { color: t.textPrimary }]}>Preview</Text>
+              <TouchableOpacity
+                style={[styles.fullScreenBtn, { borderColor: t.border, backgroundColor: t.inputBg }, !canOpenPreviewModal && styles.previewDisabled]}
+                onPress={() => setPreviewModalVisible(true)}
+                activeOpacity={0.85}
+                disabled={!canOpenPreviewModal}
+              >
+                <Maximize2 size={14} color={t.textSecondary} />
+                <Text style={[styles.fullScreenText, { color: t.textSecondary }]}>Full screen</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.previewBody, { backgroundColor: t.chipBg }, !canOpenPreviewModal && styles.previewDisabled]}
+              onPress={() => setPreviewModalVisible(true)}
+              activeOpacity={0.9}
+              disabled={!canOpenPreviewModal}
+            >
+              {previewKind === 'image' ? (
+                <Image source={{ uri: previewDisplayUri }} resizeMode="cover" style={styles.previewImage} />
               ) : (
                 <View style={styles.previewFallback}>
                   <FileText size={22} color={t.iconDefault} />
-                  <Text style={[styles.previewFallbackText, { color: t.textSecondary }]}>First-page preview unavailable for this file type.</Text>
+                  <Text style={[styles.previewFallbackText, { color: t.textSecondary }]}>
+                    {previewKind === 'pdf'
+                      ? 'PDF file ready for full-screen preview.'
+                      : previewKind === 'doc'
+                        ? 'DOC file ready for full-screen preview.'
+                        : 'File ready for preview.'}
+                  </Text>
+                  <Text style={[styles.previewHint, { color: t.textMuted }]}>Tap to open</Text>
                 </View>
               )}
-            </View>
-            <Text style={[styles.previewMeta, { color: t.textSecondary }]}>{formatPreviewName(fileName || uploadedFile?.name)}</Text>
+            </TouchableOpacity>
+            <Text style={[styles.previewMeta, { color: t.textSecondary }]}>{formatPreviewName(previewFileName)}</Text>
           </View>
         ) : null}
 
@@ -892,6 +968,62 @@ export const StandardPrintingScreen: React.FC = () => {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={previewModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPreviewModalVisible(false)}
+      >
+        <Pressable style={styles.previewModalBackdrop} onPress={() => setPreviewModalVisible(false)}>
+          <Pressable style={[styles.previewModalCard, { backgroundColor: t.card }]} onPress={() => {}}>
+            <View style={[styles.previewModalHeader, { borderBottomColor: t.border }]}> 
+              <Text style={[styles.previewModalTitle, { color: t.textPrimary }]} numberOfLines={1}>
+                {formatPreviewName(previewFileName)}
+              </Text>
+              <TouchableOpacity
+                style={[styles.previewModalCloseBtn, { borderColor: t.border, backgroundColor: t.inputBg }]}
+                onPress={() => setPreviewModalVisible(false)}
+              >
+                <X size={18} color={t.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.previewModalBody, { backgroundColor: t.chipBg }]}> 
+              {previewKind === 'image' ? (
+                <Image source={{ uri: previewDisplayUri }} resizeMode="contain" style={styles.previewModalImage} />
+              ) : embeddedPreviewUri ? (
+                <WebView
+                  source={{ uri: embeddedPreviewUri }}
+                  style={styles.previewWebview}
+                  startInLoadingState
+                  renderLoading={() => (
+                    <View style={styles.previewModalLoader}>
+                      <ActivityIndicator size="large" color={t.textPrimary} />
+                    </View>
+                  )}
+                />
+              ) : (
+                <View style={styles.previewModalFallback}> 
+                  <FileText size={28} color={t.iconDefault} />
+                  <Text style={[styles.previewModalFallbackText, { color: t.textSecondary }]}>Preview unavailable for this file path.</Text>
+                  {previewDisplayUri ? (
+                    <TouchableOpacity
+                      style={[styles.openFileBtn, { backgroundColor: t.textPrimary }]}
+                      onPress={() => {
+                        if (!previewDisplayUri) return;
+                        Linking.openURL(previewDisplayUri).catch(() => null);
+                      }}
+                    >
+                      <Text style={[styles.openFileText, { color: t.background }]}>Open file</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              )}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeScreen>
   );
 };
@@ -966,8 +1098,27 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     gap: Spacing.xs,
   },
+  previewHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
   previewTitle: {
     ...Typography.subtitle,
+    flex: 1,
+  },
+  fullScreenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  fullScreenText: {
+    ...Typography.small,
   },
   previewBody: {
     borderRadius: Radii.small,
@@ -990,8 +1141,14 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     textAlign: 'center',
   },
+  previewHint: {
+    ...Typography.small,
+  },
   previewMeta: {
     ...Typography.small,
+  },
+  previewDisabled: {
+    opacity: 0.52,
   },
   configCard: {
     borderWidth: 1,
@@ -1123,5 +1280,75 @@ const styles = StyleSheet.create({
   },
   disabledBtn: {
     opacity: 0.58,
+  },
+  previewModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+  },
+  previewModalCard: {
+    flex: 1,
+    borderRadius: Radii.section,
+    overflow: 'hidden',
+    maxHeight: '92%',
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    gap: Spacing.sm,
+  },
+  previewModalTitle: {
+    ...Typography.bodyBold,
+    flex: 1,
+  },
+  previewModalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewModalBody: {
+    flex: 1,
+  },
+  previewModalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewWebview: {
+    flex: 1,
+    width: '100%',
+  },
+  previewModalLoader: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewModalFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  previewModalFallbackText: {
+    ...Typography.bodySm,
+    textAlign: 'center',
+  },
+  openFileBtn: {
+    marginTop: Spacing.xs,
+    borderRadius: Radii.button,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  openFileText: {
+    ...Typography.bodyBold,
   },
 });
