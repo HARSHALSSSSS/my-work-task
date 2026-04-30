@@ -659,13 +659,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
     paddingHorizontal: 2,
-    height: 40,
+    minHeight: 44,
     gap: 10,
   },
   searchPlaceholder: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
     fontSize: 15,
+    lineHeight: 20,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   inlineLoadingWrap: {
     paddingVertical: 20,
@@ -719,7 +723,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bannerWrap: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 16,
@@ -728,11 +732,11 @@ const styles = StyleSheet.create({
   },
   bannerImage: {
     width: '100%',
-    height: scale(118),
+    height: scale(132),
   },
   bannerImageLarge: {
     width: '100%',
-    height: scale(92),
+    height: scale(118),
   },
   bannerOverlay: {
     position: 'absolute',

@@ -483,13 +483,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
     paddingHorizontal: 2,
-    height: 40,
+    minHeight: 44,
     gap: 10,
   },
   searchPlaceholder: {
     flex: 1,
     fontFamily: 'Poppins_400Regular',
     fontSize: 15,
+    lineHeight: 20,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   inlineLoadingWrap: {
     paddingVertical: 20,
