@@ -17,6 +17,19 @@ export interface CartItem {
   designId?: string;
   printConfigId?: string;
   businessPrintConfigId?: string;
+  businessConfigDraft?: {
+    quantity?: number;
+    deliveryMethod?: 'pickup' | 'delivery';
+    shopId?: string;
+    servicePackage?: 'standard' | 'express' | 'instant' | '';
+    designType?: 'premium' | 'normal';
+    selectedOptions?: {
+      size?: string;
+      paperType?: string;
+      finish?: string;
+      sides?: string;
+    };
+  };
   product?: Product;
   printConfig?: PrintConfig;
   type: 'product' | 'printing' | 'gifting';
@@ -45,6 +58,23 @@ export interface PrintConfig {
   specialInstructions: string;
   fileUri?: string;
   fileName?: string;
+  fileMime?: string;
+  uploadedFile?: {
+    _id?: string;
+    url: string;
+    name: string;
+    mimeType?: string;
+    size?: number;
+    pageCount?: number;
+    previewImage?: string;
+    thumbnailUrl?: string;
+    previewUrl?: string;
+  };
+  coverPage?: string;
+  bindingCover?: string;
+  cdOption?: string;
+  thesisSpineText?: string;
+  customColorDescription?: string;
 }
 
 export interface Order {

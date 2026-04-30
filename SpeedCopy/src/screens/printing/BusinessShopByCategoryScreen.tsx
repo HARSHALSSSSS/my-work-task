@@ -192,10 +192,13 @@ export const BusinessShopByCategoryScreen: React.FC = () => {
   }, [products, query]);
 
   const actionCards = useMemo<ActionCard[]>(() => {
-    return filteredProducts.flatMap((product) => ([
-      { id: `${product.id}-premium`, action: 'premium', product },
-      { id: `${product.id}-start`, action: 'start', product },
-    ]));
+    return filteredProducts.flatMap((product) => {
+      const cards: ActionCard[] = [{ id: `${product.id}-start`, action: 'start', product }];
+      if (product.hasPremium) {
+        cards.unshift({ id: `${product.id}-premium`, action: 'premium', product });
+      }
+      return cards;
+    });
   }, [filteredProducts]);
 
   const onExplorePremiumPress = useCallback((item: DesignProduct) => {

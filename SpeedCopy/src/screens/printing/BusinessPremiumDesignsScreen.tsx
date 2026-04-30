@@ -203,6 +203,9 @@ export const BusinessPremiumDesignsScreen: React.FC = () => {
                       image: item.productImage || item.previewImage,
                       name: item.productName || item.name,
                       designId: design._id,
+                      businessConfigDraft: {
+                        designType: 'premium',
+                      },
                     });
                   } catch (e: any) {
                     Alert.alert('Error', e?.serverMessage || e?.message || 'Failed to load template design');

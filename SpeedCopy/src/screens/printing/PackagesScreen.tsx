@@ -119,6 +119,13 @@ function getVisualTheme(key: 'standard' | 'express' | 'instant') {
   };
 }
 
+function normalizeServicePackageId(value: string): 'standard' | 'express' | 'instant' {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.includes('instant')) return 'instant';
+  if (normalized.includes('express')) return 'express';
+  return 'standard';
+}
+
 export const PackagesScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
@@ -180,7 +187,7 @@ export const PackagesScreen: React.FC = () => {
     navigation.navigate('StandardPrinting', {
       subService,
       deliveryMode: 'delivery',
-      servicePackage: packageId as 'standard' | 'express' | 'instant',
+      servicePackage: normalizeServicePackageId(packageId),
     });
   };
 

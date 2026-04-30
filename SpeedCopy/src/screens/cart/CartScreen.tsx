@@ -522,7 +522,12 @@ export function CartScreen() {
         if (flowType === 'gifting') {
           navigation.navigate('GiftTab', {
             screen: 'GiftCustomize',
-            params: { productId: backendProductId },
+            params: {
+              productId: backendProductId,
+              image: item.image,
+              name: item.name,
+              designId: item.designId,
+            },
           });
           return;
         }
@@ -533,6 +538,8 @@ export function CartScreen() {
             flowType,
             image: item.image,
             name: item.name,
+            designId: item.designId,
+            businessConfigDraft: item.businessConfigDraft,
           },
         });
         return;
@@ -547,6 +554,23 @@ export function CartScreen() {
               deliveryMode: item.printConfig?.deliveryMethod,
               locationId: item.printConfig?.shopId,
               servicePackage: item.printConfig?.servicePackage,
+              customColorDescription: item.printConfig?.customColorDescription,
+              initialFileName: item.printConfig?.fileName,
+              initialFileUri: item.printConfig?.fileUri,
+              initialFileMime: item.printConfig?.fileMime,
+              initialUploadedFile: item.printConfig?.uploadedFile,
+              initialColorMode: item.printConfig?.colorMode,
+              initialPageSize: item.printConfig?.pageSize,
+              initialPrintSide: item.printConfig?.printSide,
+              initialPrintType: item.printConfig?.printType,
+              initialCopies: item.printConfig?.copies,
+              initialLinearGraph: item.printConfig?.addons?.linearGraph,
+              initialSemiLogGraph: item.printConfig?.addons?.semiLogGraph,
+              initialInstructions: item.printConfig?.specialInstructions,
+              initialCoverPage: item.printConfig?.coverPage,
+              initialBindingCover: item.printConfig?.bindingCover,
+              initialCdOption: item.printConfig?.cdOption,
+              initialThesisSpineText: item.printConfig?.thesisSpineText,
             },
           });
           return;

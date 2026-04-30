@@ -33,6 +33,42 @@ export type HomeTabStackParamList = {
     deliveryMode?: 'pickup' | 'delivery';
     locationId?: string;
     servicePackage?: 'standard' | 'express' | 'instant';
+    customColorDescription?: string;
+    initialFileName?: string;
+    initialFileUri?: string;
+    initialFileMime?: string;
+    initialUploadedFile?: {
+      _id?: string;
+      url: string;
+      name: string;
+      mimeType?: string;
+      size?: number;
+      pageCount?: number;
+      previewImage?: string;
+      thumbnailUrl?: string;
+      previewUrl?: string;
+    };
+    initialColorMode?: 'bw' | 'color' | 'custom';
+    initialPageSize?: 'A4' | 'A3';
+    initialPrintSide?: 'one-sided' | 'two-sided' | '4-in-1';
+    initialPrintType?: 'loose' | 'stapled';
+    initialCopies?: number;
+    initialLinearGraph?: number;
+    initialSemiLogGraph?: number;
+    initialInstructions?: string;
+    initialCoverPage?: string;
+    initialBindingCover?: string;
+    initialCdOption?: string;
+    initialThesisSpineText?: string;
+  };
+  CustomColorDescription: {
+    description?: string;
+    returnTo?: keyof HomeTabStackParamList;
+    returnRouteKey?: string;
+    subService: PrintingSubService;
+    deliveryMode?: 'pickup' | 'delivery';
+    locationId?: string;
+    servicePackage?: 'standard' | 'express' | 'instant';
   };
   PrintStore: undefined;
   BusinessShopByCategory: {
@@ -78,6 +114,19 @@ export type HomeTabStackParamList = {
     image?: string;
     name?: string;
     designId?: string;
+    businessConfigDraft?: {
+      quantity?: number;
+      deliveryMethod?: 'pickup' | 'delivery';
+      shopId?: string;
+      servicePackage?: 'standard' | 'express' | 'instant' | '';
+      designType?: 'premium' | 'normal';
+      selectedOptions?: {
+        size?: string;
+        paperType?: string;
+        finish?: string;
+        sides?: string;
+      };
+    };
   };
 };
 
@@ -97,6 +146,7 @@ export type GiftStackParamList = {
     flowType?: 'printing' | 'gifting' | 'shopping';
     image?: string;
     name?: string;
+    designId?: string;
   };
   GiftShopByCategory: { productId?: string; category?: string; categoryName?: string; bannerImage?: string };
 };

@@ -26,6 +26,7 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import { Spacing } from '../../constants/theme';
 import { useCartStore } from '../../store/useCartStore';
 import { useThemeStore } from '../../store/useThemeStore';
+import { QuantityPicker } from '../../components/ui/QuantityPicker';
 import {
   SkiaProductCanvas,
   ProductCanvasConfig,
@@ -553,6 +554,41 @@ function inferMimeTypeFromUri(uri: string): string {
   return 'image/png';
 }
 
+type SavedCustomizationDraft = {
+  selectedSize?: string;
+  selectedBase?: string;
+  selectedInterior?: string;
+  businessSides?: string;
+  businessQuantity?: number;
+  businessDeliveryMethod?: 'pickup' | 'delivery';
+  businessServicePackage?: 'standard' | 'express' | 'instant' | '';
+  selectedPickupShopId?: string;
+  businessDesignType?: 'premium' | 'normal';
+};
+
+type BusinessDeliveryMethod = 'pickup' | 'delivery';
+type BusinessServicePackage = 'standard' | 'express' | 'instant' | '';
+
+type PickupLocationItem = {
+  id: string;
+  title: string;
+  address: string;
+  pincode: string;
+};
+
+const BUSINESS_PRINT_SIDES = [
+  { id: 'single_sided', label: 'Single-sided' },
+  { id: 'double_sided', label: 'Double-sided' },
+] as const;
+
+function normalizeBusinessServicePackage(value: string): BusinessServicePackage {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.includes('instant')) return 'instant';
+  if (normalized.includes('express')) return 'express';
+  if (normalized.includes('standard')) return 'standard';
+  return '';
+}
+
 async function ensureDataUriFromLocalImage(uri?: string): Promise<string | undefined> {
   if (!uri) return undefined;
   if (uri.startsWith('data:')) return uri;
@@ -577,6 +613,7 @@ export function CustomizeScreen() {
     image: passedImage,
     name: passedName,
     designId: passedDesignId,
+    businessConfigDraft,
   } = route.params ?? {};
   const { colors: t, mode: themeMode } = useThemeStore();
   const addItem = useCartStore((s) => s.addItem);
@@ -586,6 +623,25 @@ export function CustomizeScreen() {
   const [selectedSize, setSelectedSize] = useState('standard');
   const [selectedBase, setSelectedBase] = useState('white');
   const [selectedInterior, setSelectedInterior] = useState('white');
+  const [businessSides, setBusinessSides] = useState(
+    businessConfigDraft?.selectedOptions?.sides || 'single_sided',
+  );
+  const [businessDesignType, setBusinessDesignType] = useState<'premium' | 'normal'>(
+    businessConfigDraft?.designType || 'normal',
+  );
+  const [businessQuantity, setBusinessQuantity] = useState(
+    Math.max(1, Number(businessConfigDraft?.quantity || 1)),
+  );
+  const [businessDeliveryMethod, setBusinessDeliveryMethod] = useState<BusinessDeliveryMethod>(
+    businessConfigDraft?.deliveryMethod || 'delivery',
+  );
+  const [businessServicePackage, setBusinessServicePackage] = useState<BusinessServicePackage>(
+    businessConfigDraft?.servicePackage || 'standard',
+  );
+  const [pickupLocations, setPickupLocations] = useState<PickupLocationItem[]>([]);
+  const [pickupLocationsLoading, setPickupLocationsLoading] = useState(false);
+  const [selectedPickupShopId, setSelectedPickupShopId] = useState(businessConfigDraft?.shopId || '');
+  const [servicePackages, setServicePackages] = useState<Array<{ id: BusinessServicePackage; label: string; duration?: string }>>([]);
   const [userImageUri, setUserImageUri] = useState<string | null>(null);
   const [exportedUri, setExportedUri] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -662,6 +718,21 @@ export function CustomizeScreen() {
     setShowPrintAreaEditor(false);
     setIsAreaHandleDragging(false);
     setIsTextDragging(false);
+    setBusinessSides(businessConfigDraft?.selectedOptions?.sides || 'single_sided');
+    setBusinessDesignType(businessConfigDraft?.designType || 'normal');
+    setBusinessQuantity(Math.max(1, Number(businessConfigDraft?.quantity || 1)));
+    setBusinessDeliveryMethod(businessConfigDraft?.deliveryMethod || 'delivery');
+    setBusinessServicePackage(businessConfigDraft?.servicePackage || 'standard');
+    setSelectedPickupShopId(businessConfigDraft?.shopId || '');
+    if (businessConfigDraft?.selectedOptions?.size) {
+      setSelectedSize(businessConfigDraft.selectedOptions.size);
+    }
+    if (businessConfigDraft?.selectedOptions?.paperType) {
+      setSelectedBase(businessConfigDraft.selectedOptions.paperType);
+    }
+    if (businessConfigDraft?.selectedOptions?.finish) {
+      setSelectedInterior(businessConfigDraft.selectedOptions.finish);
+    }
     setSelectedTextId(null);
     setTextDraft('');
     setTextColor(TEXT_COLORS[0]);
@@ -722,7 +793,85 @@ export function CustomizeScreen() {
     } else {
       setLoadingImage(false);
     }
-  }, [flowType, passedImage, passedName, productId]);
+  }, [businessConfigDraft, flowType, passedImage, passedName, productId]);
+
+  useEffect(() => {
+    if (flowType !== 'printing') return;
+    let active = true;
+    setPickupLocationsLoading(true);
+
+    Promise.all([
+      productsApi.getServicePackages().catch(() => []),
+      productsApi.getPickupLocations().catch(() => []),
+    ])
+      .then(([packagesRes, locationsRes]) => {
+        if (!active) return;
+
+        const mappedPackages = (packagesRes || [])
+          .map((pkg: any) => {
+            const id = normalizeBusinessServicePackage(pkg?.id || pkg?._id || pkg?.slug || pkg?.name);
+            if (!id) return null;
+            return {
+              id,
+              label: String(pkg?.name || id).trim(),
+              duration: String(pkg?.duration || pkg?.deliveryTime || '').trim(),
+            };
+          })
+          .filter(Boolean) as Array<{ id: BusinessServicePackage; label: string; duration?: string }>;
+
+        setServicePackages(
+          mappedPackages.length
+            ? mappedPackages
+            : [
+                { id: 'standard', label: 'Standard' },
+                { id: 'express', label: 'Express' },
+                { id: 'instant', label: 'Instant' },
+              ],
+        );
+        if (!businessConfigDraft?.servicePackage) {
+          const firstPackage = mappedPackages[0]?.id || 'standard';
+          setBusinessServicePackage(firstPackage);
+        }
+
+        const mappedLocations = (locationsRes || [])
+          .map((loc: any): PickupLocationItem | null => {
+            const id = String(loc?._id || loc?.id || '').trim();
+            if (!id) return null;
+            const title = String(loc?.name || loc?.shopName || loc?.storeName || 'Pickup location').trim();
+            const addressParts = [
+              loc?.address,
+              loc?.addressLine,
+              loc?.area,
+              loc?.locality,
+              loc?.landmark,
+              loc?.city,
+              loc?.state,
+            ]
+              .map((part: any) => String(part || '').trim())
+              .filter(Boolean);
+            const pincode = String(loc?.pincode || '').trim();
+            return {
+              id,
+              title,
+              address: [addressParts.join(', '), pincode].filter(Boolean).join(' - '),
+              pincode,
+            };
+          })
+          .filter(Boolean) as PickupLocationItem[];
+
+        setPickupLocations(mappedLocations);
+        if (!selectedPickupShopId && mappedLocations[0]?.id) {
+          setSelectedPickupShopId(mappedLocations[0].id);
+        }
+      })
+      .finally(() => {
+        if (active) setPickupLocationsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [flowType]);
 
   useEffect(() => {
     if (!passedDesignId) return;
@@ -733,6 +882,28 @@ export function CustomizeScreen() {
         }
         if (design.canvasJson?.textLayers?.length) {
           setTextLayers(design.canvasJson.textLayers);
+        }
+        const customization = isRecord(design.canvasJson?.customization) ? design.canvasJson.customization : null;
+        if (customization) {
+          if (typeof customization.selectedSize === 'string') setSelectedSize(customization.selectedSize);
+          if (typeof customization.selectedBase === 'string') setSelectedBase(customization.selectedBase);
+          if (typeof customization.selectedInterior === 'string') setSelectedInterior(customization.selectedInterior);
+          if (typeof customization.businessSides === 'string') setBusinessSides(customization.businessSides);
+          if (typeof customization.businessQuantity === 'number' && Number.isFinite(customization.businessQuantity)) {
+            setBusinessQuantity(Math.max(1, customization.businessQuantity));
+          }
+          if (customization.businessDeliveryMethod === 'pickup' || customization.businessDeliveryMethod === 'delivery') {
+            setBusinessDeliveryMethod(customization.businessDeliveryMethod);
+          }
+          if (typeof customization.businessServicePackage === 'string') {
+            setBusinessServicePackage(customization.businessServicePackage as BusinessServicePackage);
+          }
+          if (typeof customization.selectedPickupShopId === 'string') {
+            setSelectedPickupShopId(customization.selectedPickupShopId);
+          }
+          if (customization.businessDesignType === 'premium' || customization.businessDesignType === 'normal') {
+            setBusinessDesignType(customization.businessDesignType);
+          }
         }
       })
       .catch(() => {});
@@ -765,6 +936,29 @@ export function CustomizeScreen() {
       return undefined;
     }
   }, [productImageUri, flowType]);
+
+  const totalPrice = React.useMemo(() => unitPrice * businessQuantity, [businessQuantity, unitPrice]);
+  const savedCustomizationDraft = React.useMemo<SavedCustomizationDraft>(() => ({
+    selectedSize,
+    selectedBase,
+    selectedInterior,
+    businessSides,
+    businessQuantity,
+    businessDeliveryMethod,
+    businessServicePackage,
+    selectedPickupShopId,
+    businessDesignType,
+  }), [
+    businessDeliveryMethod,
+    businessDesignType,
+    businessQuantity,
+    businessServicePackage,
+    businessSides,
+    selectedBase,
+    selectedInterior,
+    selectedPickupShopId,
+    selectedSize,
+  ]);
 
   useEffect(() => {
     setProductNaturalSize(null);
@@ -1297,17 +1491,18 @@ export function CustomizeScreen() {
     async (previewDataUri?: string): Promise<string> => {
       if (passedDesignId) {
         try {
-          const updated = await designsApi.updateDesign(passedDesignId, {
-            name: `${productName} custom design`,
-            canvasJson: {
-              source: 'speedcopy-mobile-customizer',
-              textLayers,
-              printArea: productCanvasConfig.printArea,
-              mask: productCanvasConfig.mask,
-              hasUserImage: Boolean(userImageUri),
-            },
-            previewImage: previewDataUri,
-          });
+        const updated = await designsApi.updateDesign(passedDesignId, {
+          name: `${productName} custom design`,
+          canvasJson: {
+            source: 'speedcopy-mobile-customizer',
+            textLayers,
+            printArea: productCanvasConfig.printArea,
+            mask: productCanvasConfig.mask,
+            hasUserImage: Boolean(userImageUri),
+            customization: savedCustomizationDraft,
+          },
+          previewImage: previewDataUri,
+        });
           if (!updated?._id) {
             throw new Error('Design update returned no id.');
           }
@@ -1335,6 +1530,7 @@ export function CustomizeScreen() {
             printArea: productCanvasConfig.printArea,
             mask: productCanvasConfig.mask,
             hasUserImage: Boolean(userImageUri),
+            customization: savedCustomizationDraft,
           },
           previewImage: previewDataUri,
           dimensions: { width: canvasW, height: canvasH },
@@ -1347,31 +1543,38 @@ export function CustomizeScreen() {
         throw new Error(e?.serverMessage || e?.message || 'Failed to save your customized design.');
       }
     },
-    [passedDesignId, canvasH, canvasW, flowType, productCanvasConfig.mask, productCanvasConfig.printArea, productId, productName, textLayers, userImageUri],
+    [passedDesignId, canvasH, canvasW, flowType, productCanvasConfig.mask, productCanvasConfig.printArea, productId, productName, savedCustomizationDraft, textLayers, userImageUri],
   );
 
   const persistBusinessPrintConfigOrThrow = useCallback(
     async (designId: string, previewDataUri?: string): Promise<string | undefined> => {
       if (flowType !== 'printing') return undefined;
+      if (businessDeliveryMethod === 'pickup' && !selectedPickupShopId) {
+        throw new Error('Please select a pickup location.');
+      }
+      if (businessDeliveryMethod === 'delivery' && !businessServicePackage) {
+        throw new Error('Please select a delivery package.');
+      }
 
       const payload = {
         productId,
         productName,
         businessPrintType: businessPrintType || inferBusinessPrintType(productName),
-        designType: 'normal' as const,
+        designType: businessDesignType,
         designId,
         previewImage: previewDataUri,
         selectedOptions: {
           size: selectedSize,
           paperType: selectedBase,
           finish: selectedInterior,
-          sides: 'single_sided',
+          sides: businessSides,
         },
-        quantity: 1,
+        quantity: businessQuantity,
         unitPrice,
-        totalPrice: unitPrice,
-        deliveryMethod: 'delivery' as const,
-        servicePackage: 'standard' as const,
+        totalPrice,
+        deliveryMethod: businessDeliveryMethod,
+        shopId: businessDeliveryMethod === 'pickup' ? selectedPickupShopId : undefined,
+        servicePackage: businessDeliveryMethod === 'delivery' ? businessServicePackage : '',
       };
 
       const savedConfig = await productsApi.saveBusinessPrintConfig(payload);
@@ -1381,7 +1584,23 @@ export function CustomizeScreen() {
       }
       return configId;
     },
-    [businessPrintType, flowType, productId, productName, selectedBase, selectedInterior, selectedSize, unitPrice],
+    [
+      businessDeliveryMethod,
+      businessDesignType,
+      businessPrintType,
+      businessQuantity,
+      businessServicePackage,
+      businessSides,
+      flowType,
+      productId,
+      productName,
+      selectedBase,
+      selectedInterior,
+      selectedPickupShopId,
+      selectedSize,
+      totalPrice,
+      unitPrice,
+    ],
   );
 
   const handleBuyNow = useCallback(async () => {
@@ -1398,9 +1617,25 @@ export function CustomizeScreen() {
         backendProductId: productId,
         designId,
         businessPrintConfigId,
+        businessConfigDraft:
+          flowType === 'printing'
+            ? {
+                quantity: businessQuantity,
+                deliveryMethod: businessDeliveryMethod,
+                shopId: businessDeliveryMethod === 'pickup' ? selectedPickupShopId : undefined,
+                servicePackage: businessDeliveryMethod === 'delivery' ? businessServicePackage : '',
+                designType: businessDesignType,
+                selectedOptions: {
+                  size: selectedSize,
+                  paperType: selectedBase,
+                  finish: selectedInterior,
+                  sides: businessSides,
+                },
+              }
+            : undefined,
         type: 'product',
         flowType,
-        quantity: 1,
+        quantity: flowType === 'printing' ? businessQuantity : 1,
         price: unitPrice,
         name: `${productName} - Custom (${selectedSize})`,
         image: imageUri,
@@ -1414,7 +1649,7 @@ export function CustomizeScreen() {
     } catch (e: any) {
       Alert.alert('Design Save Failed', e?.message || 'Please try again.');
     }
-  }, [addItem, captureDesignSnapshot, navigation, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, selectedSize, unitPrice, productName, stockState]);
+  }, [addItem, businessDeliveryMethod, businessDesignType, businessQuantity, businessServicePackage, businessSides, captureDesignSnapshot, navigation, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, selectedBase, selectedInterior, selectedPickupShopId, selectedSize, unitPrice, productName, stockState]);
 
   const handleAddToCart = useCallback(async () => {
     if (!stockState.inStock) {
@@ -1430,9 +1665,25 @@ export function CustomizeScreen() {
         backendProductId: productId,
         designId,
         businessPrintConfigId,
+        businessConfigDraft:
+          flowType === 'printing'
+            ? {
+                quantity: businessQuantity,
+                deliveryMethod: businessDeliveryMethod,
+                shopId: businessDeliveryMethod === 'pickup' ? selectedPickupShopId : undefined,
+                servicePackage: businessDeliveryMethod === 'delivery' ? businessServicePackage : '',
+                designType: businessDesignType,
+                selectedOptions: {
+                  size: selectedSize,
+                  paperType: selectedBase,
+                  finish: selectedInterior,
+                  sides: businessSides,
+                },
+              }
+            : undefined,
         type: 'product',
         flowType,
-        quantity: 1,
+        quantity: flowType === 'printing' ? businessQuantity : 1,
         price: unitPrice,
         name: `${productName} - Custom (${selectedSize})`,
         image: imageUri,
@@ -1441,7 +1692,7 @@ export function CustomizeScreen() {
     } catch (e: any) {
       Alert.alert('Design Save Failed', e?.message || 'Please try again.');
     }
-  }, [addItem, captureDesignSnapshot, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, selectedSize, unitPrice, productName, stockState]);
+  }, [addItem, businessDeliveryMethod, businessDesignType, businessQuantity, businessServicePackage, businessSides, captureDesignSnapshot, persistBusinessPrintConfigOrThrow, persistDesignOrThrow, productId, flowType, selectedBase, selectedInterior, selectedPickupShopId, selectedSize, unitPrice, productName, stockState]);
 
   return (
     <SafeScreen>
@@ -1850,6 +2101,114 @@ export function CustomizeScreen() {
           </View>
         </View>
 
+        {flowType === 'printing' ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionNumber, { color: t.textPrimary }]}>4. PRINTING OPTIONS</Text>
+
+            <View style={styles.businessOptionBlock}>
+              <Text style={[styles.optionLabel, { color: t.textSecondary }]}>Print side</Text>
+              <View style={styles.inlineChipRow}>
+                {BUSINESS_PRINT_SIDES.map((side) => {
+                  const active = businessSides === side.id;
+                  return (
+                    <TouchableOpacity
+                      key={side.id}
+                      style={[
+                        styles.inlineChip,
+                        { borderColor: active ? accentColor : t.border, backgroundColor: active ? activeBg : t.card },
+                      ]}
+                      onPress={() => setBusinessSides(side.id)}
+                    >
+                      <Text style={[styles.inlineChipText, { color: active ? accentColor : t.textSecondary }]}>{side.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.businessOptionBlock}>
+              <QuantityPicker label="Quantity" value={businessQuantity} onChange={setBusinessQuantity} min={1} max={999} />
+            </View>
+
+            <View style={styles.businessOptionBlock}>
+              <Text style={[styles.optionLabel, { color: t.textSecondary }]}>Delivery method</Text>
+              <View style={styles.inlineChipRow}>
+                {(['delivery', 'pickup'] as const).map((method) => {
+                  const active = businessDeliveryMethod === method;
+                  return (
+                    <TouchableOpacity
+                      key={method}
+                      style={[
+                        styles.inlineChip,
+                        { borderColor: active ? accentColor : t.border, backgroundColor: active ? activeBg : t.card },
+                      ]}
+                      onPress={() => setBusinessDeliveryMethod(method)}
+                    >
+                      <Text style={[styles.inlineChipText, { color: active ? accentColor : t.textSecondary }]}>
+                        {method === 'delivery' ? 'Delivery' : 'Pickup'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {businessDeliveryMethod === 'delivery' ? (
+              <View style={styles.businessOptionBlock}>
+                <Text style={[styles.optionLabel, { color: t.textSecondary }]}>Service package</Text>
+                <View style={styles.packageListCompact}>
+                  {servicePackages.map((pkg) => {
+                    const active = businessServicePackage === pkg.id;
+                    return (
+                      <TouchableOpacity
+                        key={pkg.id || pkg.label}
+                        style={[
+                          styles.packageCardCompact,
+                          { borderColor: active ? accentColor : t.border, backgroundColor: active ? activeBg : t.card },
+                        ]}
+                        onPress={() => setBusinessServicePackage(pkg.id)}
+                      >
+                        <Text style={[styles.packageTitleCompact, { color: active ? accentColor : t.textPrimary }]}>{pkg.label}</Text>
+                        {pkg.duration ? <Text style={[styles.packageSubCompact, { color: t.textSecondary }]}>{pkg.duration}</Text> : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.businessOptionBlock}>
+                <Text style={[styles.optionLabel, { color: t.textSecondary }]}>Pickup location</Text>
+                {pickupLocationsLoading ? (
+                  <ActivityIndicator size="small" color={accentColor} />
+                ) : (
+                  <View style={styles.packageListCompact}>
+                    {pickupLocations.map((location) => {
+                      const active = selectedPickupShopId === location.id;
+                      return (
+                        <TouchableOpacity
+                          key={location.id}
+                          style={[
+                            styles.packageCardCompact,
+                            { borderColor: active ? accentColor : t.border, backgroundColor: active ? activeBg : t.card },
+                          ]}
+                          onPress={() => setSelectedPickupShopId(location.id)}
+                        >
+                          <Text style={[styles.packageTitleCompact, { color: active ? accentColor : t.textPrimary }]} numberOfLines={1}>
+                            {location.title}
+                          </Text>
+                          <Text style={[styles.packageSubCompact, { color: t.textSecondary }]} numberOfLines={2}>
+                            {location.address}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        ) : null}
+
         {/* Design ready badge */}
         {!stockState.inStock && (
           <View style={[styles.designBadge, { backgroundColor: '#FEE2E2' }]}>
@@ -1869,7 +2228,7 @@ export function CustomizeScreen() {
         {/* Price */}
         <View style={styles.priceRow}>
           <Text style={[styles.priceLabel, { color: t.textSecondary }]}>Total</Text>
-          <Text style={[styles.priceValue, { color: t.textPrimary }]}>{`\u20B9${unitPrice}`}</Text>
+          <Text style={[styles.priceValue, { color: t.textPrimary }]}>{`\u20B9${flowType === 'printing' ? totalPrice : unitPrice}`}</Text>
         </View>
 
         {/* Buy Now */}
@@ -1885,7 +2244,7 @@ export function CustomizeScreen() {
             <ShoppingCart size={18} color={t.background} style={{ marginRight: 8 }} />
           )}
           <Text style={[styles.buyNowText, { color: t.background }]}>
-            {exporting ? 'Preparing design...' : `Buy Now - \u20B9${unitPrice}`}
+            {exporting ? 'Preparing design...' : `Buy Now - \u20B9${flowType === 'printing' ? totalPrice : unitPrice}`}
           </Text>
         </TouchableOpacity>
 
@@ -2130,6 +2489,48 @@ const styles = StyleSheet.create({
   },
   colorCircleActive: {
     borderWidth: 3,
+  },
+  businessOptionBlock: {
+    marginTop: 10,
+    gap: 8,
+  },
+  optionLabel: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+  },
+  inlineChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  inlineChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  inlineChipText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+  },
+  packageListCompact: {
+    gap: 10,
+  },
+  packageCardCompact: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
+  },
+  packageTitleCompact: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+  },
+  packageSubCompact: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    lineHeight: 16,
   },
   designBadge: {
     marginHorizontal: Spacing.lg,

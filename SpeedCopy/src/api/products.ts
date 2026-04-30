@@ -129,6 +129,9 @@ export interface UploadedFile {
   mimeType?: string;
   size?: number;
   pageCount?: number;
+  previewImage?: string;
+  thumbnailUrl?: string;
+  previewUrl?: string;
 }
 
 const UPLOAD_TIMEOUT_MS = 60000;
@@ -317,6 +320,28 @@ export async function uploadPrintingFile(
     mimeType:  first.mimeType || first.mimetype || mimeType,
     size:      first.size || first.fileSize,
     pageCount: first.pageCount || first.pages || undefined,
+    previewImage:
+      first.previewImage
+      || first.preview_image
+      || first.thumbnail
+      || first.thumbnailUrl
+      || first.thumbnail_url
+      || first.firstPageImage
+      || first.first_page_image
+      || undefined,
+    thumbnailUrl:
+      first.thumbnailUrl
+      || first.thumbnail_url
+      || first.thumbnail
+      || first.previewImage
+      || first.preview_image
+      || undefined,
+    previewUrl:
+      first.previewUrl
+      || first.preview_url
+      || first.viewerUrl
+      || first.viewer_url
+      || undefined,
   };
 }
 

@@ -24,6 +24,7 @@ import { PrintingCategoriesScreen } from '../screens/printing/PrintingCategories
 import { PackagesScreen } from '../screens/printing/PackagesScreen';
 import { LocationScreen } from '../screens/printing/LocationScreen';
 import { StandardPrintingScreen } from '../screens/printing/StandardPrintingScreen';
+import { CustomColorDescriptionScreen } from '../screens/printing/CustomColorDescriptionScreen';
 import { PrintStoreScreen } from '../screens/printing/PrintStoreScreen';
 import { BusinessShopByCategoryScreen } from '../screens/printing/BusinessShopByCategoryScreen';
 import { BusinessPremiumDesignsScreen } from '../screens/printing/BusinessPremiumDesignsScreen';
@@ -70,6 +71,7 @@ function HomeNavigator() {
       <HomeStack.Screen name="Packages" component={PackagesScreen} />
       <HomeStack.Screen name="Location" component={LocationScreen} />
       <HomeStack.Screen name="StandardPrinting" component={StandardPrintingScreen} />
+      <HomeStack.Screen name="CustomColorDescription" component={CustomColorDescriptionScreen} />
       <HomeStack.Screen name="PrintStore" component={PrintStoreScreen} />
       <HomeStack.Screen name="BusinessShopByCategory" component={BusinessShopByCategoryScreen} />
       <HomeStack.Screen name="BusinessPremiumDesigns" component={BusinessPremiumDesignsScreen} />

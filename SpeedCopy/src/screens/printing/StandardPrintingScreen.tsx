@@ -29,7 +29,7 @@ import * as productsApi from '../../api/products';
 import { QuantityPicker } from '../../components/ui/QuantityPicker';
 import { Input } from '../../components/ui/Input';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
-import { toAbsoluteAssetUrl } from '../../utils/product';
+import { getProductImageUrl, toAbsoluteAssetUrl } from '../../utils/product';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'StandardPrinting'>;
 type Route = RouteProp<PrintStackParamList, 'StandardPrinting'>;
@@ -219,11 +219,34 @@ function isRemoteHttpUrl(uri?: string): boolean {
 function resolveEmbeddedPreviewUri(uri?: string, kind: PreviewKind): string {
   const normalized = normalizePreviewUri(uri);
   if (!normalized) return '';
-  if (kind === 'doc') {
-    if (!isRemoteHttpUrl(normalized)) return '';
+  if (!isRemoteHttpUrl(normalized)) {
+    return kind === 'pdf' ? normalized : '';
+  }
+  if (kind === 'pdf') {
     return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(normalized)}`;
   }
+  if (kind === 'doc') {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(normalized)}`;
+  }
   return normalized;
+}
+
+function resolvePreviewImageUri(file?: productsApi.UploadedFile | null, localUri?: string, kind?: PreviewKind): string {
+  const backendImage = file ? getProductImageUrl(file) : '';
+  if (backendImage) return normalizePreviewUri(backendImage);
+  if (kind === 'image') return normalizePreviewUri(localUri || file?.url);
+  return '';
+}
+
+function getPreviewStatusText(kind: PreviewKind, hasPreviewImage: boolean): string {
+  if (hasPreviewImage) {
+    if (kind === 'pdf') return 'Showing generated first-page preview.';
+    if (kind === 'doc') return 'Showing generated document preview.';
+    return 'Showing uploaded image preview.';
+  }
+  if (kind === 'pdf') return 'PDF preview depends on viewer support.';
+  if (kind === 'doc') return 'DOC preview depends on online viewer support.';
+  return 'File ready for preview.';
 }
 
 function formatPreviewName(fileName?: string) {
@@ -277,7 +300,7 @@ function DropdownSelector({
                   onToggle();
                 }}
               >
-                <Text style={[styles.optionText, { color: active ? t.textPrimary : t.textMuted }]}>{opt.label}</Text>
+              <Text style={[styles.optionText, { color: active ? t.textPrimary : t.textMuted }]}>{opt.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -289,7 +312,8 @@ function DropdownSelector({
 
 export const StandardPrintingScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const { params } = useRoute<Route>();
+  const route = useRoute<Route>();
+  const { params } = route;
   const subService = params.subService;
   const deliveryMode = params.deliveryMode || 'delivery';
   const locationId = params.locationId;
@@ -298,41 +322,44 @@ export const StandardPrintingScreen: React.FC = () => {
   const addItem = useCartStore((s) => s.addItem);
   const { colors: t } = useThemeStore();
 
-  const [fileName, setFileName] = useState<string | undefined>();
-  const [fileUri, setFileUri] = useState<string | undefined>();
-  const [fileMime, setFileMime] = useState<string | undefined>();
-  const [uploadedFile, setUploadedFile] = useState<productsApi.UploadedFile | null>(null);
+  const [fileName, setFileName] = useState<string | undefined>(params.initialFileName);
+  const [fileUri, setFileUri] = useState<string | undefined>(params.initialFileUri);
+  const [fileMime, setFileMime] = useState<string | undefined>(params.initialFileMime);
+  const [uploadedFile, setUploadedFile] = useState<productsApi.UploadedFile | null>(params.initialUploadedFile || null);
   const [uploading, setUploading] = useState(false);
   const [pricing, setPricing] = useState<PricingState | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [colorMode, setColorMode] = useState('bw');
-  const [pageSize, setPageSize] = useState('A4');
-  const [printSide, setPrintSide] = useState('one-sided');
-  const [printType, setPrintType] = useState('loose');
-  const [bindingCover, setBindingCover] = useState('black-gold');
-  const [cdOption, setCdOption] = useState('no-need');
-  const [coverPage, setCoverPage] = useState('transparent');
-  const [copies, setCopies] = useState(1);
-  const [linearGraph, setLinearGraph] = useState(0);
-  const [semiLogGraph, setSemiLogGraph] = useState(0);
-  const [instructions, setInstructions] = useState('');
-  const [customColorDescription, setCustomColorDescription] = useState('');
-  const [thesisSpineText, setThesisSpineText] = useState('');
+  const [colorMode, setColorMode] = useState(params.initialColorMode || 'bw');
+  const [pageSize, setPageSize] = useState(params.initialPageSize || 'A4');
+  const [printSide, setPrintSide] = useState(params.initialPrintSide || 'one-sided');
+  const [printType, setPrintType] = useState(params.initialPrintType || 'loose');
+  const [bindingCover, setBindingCover] = useState(params.initialBindingCover || 'black-gold');
+  const [cdOption, setCdOption] = useState(params.initialCdOption || 'no-need');
+  const [coverPage, setCoverPage] = useState(params.initialCoverPage || 'transparent');
+  const [copies, setCopies] = useState(params.initialCopies || 1);
+  const [linearGraph, setLinearGraph] = useState(params.initialLinearGraph || 0);
+  const [semiLogGraph, setSemiLogGraph] = useState(params.initialSemiLogGraph || 0);
+  const [instructions, setInstructions] = useState(params.initialInstructions || '');
+  const [customColorDescription, setCustomColorDescription] = useState(params.customColorDescription || '');
+  const [thesisSpineText, setThesisSpineText] = useState(params.initialThesisSpineText || '');
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showSecondaryDetails, setShowSecondaryDetails] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
 
   const showThesisSpineText = subService === 'thesis' && bindingCover.includes('strip');
   const previewUri = uploadedFile?.url ? toAbsoluteAssetUrl(uploadedFile.url) : fileUri;
   const previewFileName = fileName || uploadedFile?.name;
   const previewMimeType = fileMime || uploadedFile?.mimeType;
   const previewKind = resolvePreviewKind(previewFileName, previewMimeType, previewUri);
+  const previewImageUri = resolvePreviewImageUri(uploadedFile, fileUri, previewKind);
   const previewDisplayUri = normalizePreviewUri(previewUri);
   const embeddedPreviewUri = resolveEmbeddedPreviewUri(previewDisplayUri, previewKind);
-  const canOpenPreviewModal = Boolean(previewDisplayUri) && (previewKind === 'image' || previewKind === 'pdf' || previewKind === 'doc');
+  const hasImagePreview = Boolean(previewImageUri);
+  const canOpenPreviewModal = Boolean(previewImageUri || embeddedPreviewUri || previewDisplayUri) && (previewKind === 'image' || previewKind === 'pdf' || previewKind === 'doc');
   const serviceTitle = `${subService.charAt(0).toUpperCase()}${subService.slice(1)} Printing`;
   const hasSecondaryValues = Boolean(instructions.trim() || linearGraph > 0 || semiLogGraph > 0);
 
@@ -347,6 +374,53 @@ export const StandardPrintingScreen: React.FC = () => {
   useEffect(() => {
     if (!canOpenPreviewModal) setPreviewModalVisible(false);
   }, [canOpenPreviewModal]);
+
+  useEffect(() => {
+    setPreviewLoadFailed(false);
+  }, [previewDisplayUri, previewImageUri, embeddedPreviewUri]);
+
+  useEffect(() => {
+    if (typeof params.customColorDescription === 'string') {
+      setCustomColorDescription(params.customColorDescription);
+    }
+  }, [params.customColorDescription]);
+
+  useEffect(() => {
+    if (!params.initialUploadedFile?.url && !params.initialFileUri && !params.initialFileName) return;
+    if (params.initialFileName) setFileName(params.initialFileName);
+    if (params.initialFileUri) setFileUri(params.initialFileUri);
+    if (params.initialFileMime) setFileMime(params.initialFileMime);
+    if (params.initialUploadedFile?.url) setUploadedFile(params.initialUploadedFile as productsApi.UploadedFile);
+    if (params.initialColorMode) setColorMode(params.initialColorMode);
+    if (params.initialPageSize) setPageSize(params.initialPageSize);
+    if (params.initialPrintSide) setPrintSide(params.initialPrintSide);
+    if (params.initialPrintType) setPrintType(params.initialPrintType);
+    if (params.initialBindingCover) setBindingCover(params.initialBindingCover);
+    if (params.initialCdOption) setCdOption(params.initialCdOption);
+    if (params.initialCoverPage) setCoverPage(params.initialCoverPage);
+    if (typeof params.initialCopies === 'number') setCopies(params.initialCopies);
+    if (typeof params.initialLinearGraph === 'number') setLinearGraph(params.initialLinearGraph);
+    if (typeof params.initialSemiLogGraph === 'number') setSemiLogGraph(params.initialSemiLogGraph);
+    if (typeof params.initialInstructions === 'string') setInstructions(params.initialInstructions);
+    if (typeof params.initialThesisSpineText === 'string') setThesisSpineText(params.initialThesisSpineText);
+  }, [
+    params.initialUploadedFile,
+    params.initialFileUri,
+    params.initialFileName,
+    params.initialFileMime,
+    params.initialColorMode,
+    params.initialPageSize,
+    params.initialPrintSide,
+    params.initialPrintType,
+    params.initialBindingCover,
+    params.initialCdOption,
+    params.initialCoverPage,
+    params.initialCopies,
+    params.initialLinearGraph,
+    params.initialSemiLogGraph,
+    params.initialInstructions,
+    params.initialThesisSpineText,
+  ]);
 
   const buildConfigPayload = useCallback(
     (file?: productsApi.UploadedFile | null, priceOnly = false) => {
@@ -571,15 +645,26 @@ export const StandardPrintingScreen: React.FC = () => {
         printType: printType as PrintConfig['printType'],
         copies,
         addons: { linearGraph, semiLogGraph },
-        specialInstructions: [
-          instructions.trim(),
-          colorMode === 'custom' && customColorDescription.trim() ? `Custom: ${customColorDescription.trim()}` : '',
-          showThesisSpineText && thesisSpineText.trim() ? `Thesis strip: ${thesisSpineText.trim()}` : '',
-        ]
-          .filter(Boolean)
-          .join(' | '),
+        specialInstructions: instructions.trim(),
         fileUri,
         fileName: finalUploaded.name || fileName,
+        fileMime,
+        uploadedFile: {
+          _id: finalUploaded._id,
+          url: finalUploaded.url,
+          name: finalUploaded.name,
+          mimeType: finalUploaded.mimeType,
+          size: finalUploaded.size,
+          pageCount: finalUploaded.pageCount,
+          previewImage: finalUploaded.previewImage,
+          thumbnailUrl: finalUploaded.thumbnailUrl,
+          previewUrl: finalUploaded.previewUrl,
+        },
+        coverPage,
+        bindingCover,
+        cdOption,
+        thesisSpineText: showThesisSpineText ? thesisSpineText.trim() : undefined,
+        customColorDescription: colorMode === 'custom' ? customColorDescription.trim() : undefined,
       };
 
       const item: CartItem = {
@@ -590,7 +675,7 @@ export const StandardPrintingScreen: React.FC = () => {
         name: `${serviceTitle} - ${pageSize} (${colorMode === 'bw' ? 'B&W' : colorMode === 'color' ? 'Color' : 'Custom'})`,
         printConfig,
         printConfigId: saved?._id || saved?.configId,
-        image: finalUploaded.url,
+        image: getProductImageUrl(finalUploaded) || finalUploaded.url,
       };
 
       addItem(item);
@@ -797,6 +882,18 @@ export const StandardPrintingScreen: React.FC = () => {
     return `₹${pricing.total}`;
   }, [pricing]);
 
+  const openCustomColorDescriptionScreen = useCallback(() => {
+    navigation.navigate('CustomColorDescription', {
+      description: customColorDescription,
+      returnTo: 'StandardPrinting',
+      returnRouteKey: route.key,
+      subService,
+      deliveryMode,
+      locationId,
+      servicePackage: selectedServicePackage,
+    });
+  }, [customColorDescription, deliveryMode, locationId, navigation, route.key, selectedServicePackage, subService]);
+
   return (
     <SafeScreen>
       <View style={styles.header}>
@@ -858,17 +955,13 @@ export const StandardPrintingScreen: React.FC = () => {
               activeOpacity={0.9}
               disabled={!canOpenPreviewModal}
             >
-              {previewKind === 'image' ? (
-                <Image source={{ uri: previewDisplayUri }} resizeMode="cover" style={styles.previewImage} />
+              {hasImagePreview ? (
+                <Image source={{ uri: previewImageUri }} resizeMode="cover" style={styles.previewImage} />
               ) : (
                 <View style={styles.previewFallback}>
                   <FileText size={22} color={t.iconDefault} />
                   <Text style={[styles.previewFallbackText, { color: t.textSecondary }]}>
-                    {previewKind === 'pdf'
-                      ? 'PDF file ready for full-screen preview.'
-                      : previewKind === 'doc'
-                        ? 'DOC file ready for full-screen preview.'
-                        : 'File ready for preview.'}
+                    {getPreviewStatusText(previewKind, hasImagePreview)}
                   </Text>
                   <Text style={[styles.previewHint, { color: t.textMuted }]}>Tap to open</Text>
                 </View>
@@ -882,13 +975,23 @@ export const StandardPrintingScreen: React.FC = () => {
           {renderDropdowns()}
 
           {colorMode === 'custom' ? (
-            <Input
-              label="Custom color request"
-              placeholder="Describe the custom color split, pages or combinations"
-              value={customColorDescription}
-              onChangeText={setCustomColorDescription}
-              multiline
-            />
+            <TouchableOpacity
+              style={[styles.customDescriptionCard, { borderColor: t.border, backgroundColor: t.inputBg }]}
+              onPress={openCustomColorDescriptionScreen}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.customDescriptionLabel, { color: t.textSecondary }]}>Custom color request</Text>
+              <Text
+                style={[
+                  styles.customDescriptionValue,
+                  { color: customColorDescription.trim() ? t.textPrimary : t.placeholder },
+                ]}
+              >
+                {customColorDescription.trim()
+                  ? customColorDescription.trim()
+                  : 'Tap to describe the custom color split, pages or combinations'}
+              </Text>
+            </TouchableOpacity>
           ) : null}
 
           {showThesisSpineText ? (
@@ -990,13 +1093,17 @@ export const StandardPrintingScreen: React.FC = () => {
             </View>
 
             <View style={[styles.previewModalBody, { backgroundColor: t.chipBg }]}> 
-              {previewKind === 'image' ? (
-                <Image source={{ uri: previewDisplayUri }} resizeMode="contain" style={styles.previewModalImage} />
-              ) : embeddedPreviewUri ? (
+              {hasImagePreview ? (
+                <Image source={{ uri: previewImageUri }} resizeMode="contain" style={styles.previewModalImage} />
+              ) : embeddedPreviewUri && !previewLoadFailed ? (
                 <WebView
                   source={{ uri: embeddedPreviewUri }}
                   style={styles.previewWebview}
                   startInLoadingState
+                  onError={() => setPreviewLoadFailed(true)}
+                  onHttpError={() => setPreviewLoadFailed(true)}
+                  setSupportMultipleWindows={false}
+                  allowsBackForwardNavigationGestures={false}
                   renderLoading={() => (
                     <View style={styles.previewModalLoader}>
                       <ActivityIndicator size="large" color={t.textPrimary} />
@@ -1006,7 +1113,13 @@ export const StandardPrintingScreen: React.FC = () => {
               ) : (
                 <View style={styles.previewModalFallback}> 
                   <FileText size={28} color={t.iconDefault} />
-                  <Text style={[styles.previewModalFallbackText, { color: t.textSecondary }]}>Preview unavailable for this file path.</Text>
+                  <Text style={[styles.previewModalFallbackText, { color: t.textSecondary }]}>
+                    {previewKind === 'pdf'
+                      ? 'A generated first-page image is not available yet for this PDF.'
+                      : previewKind === 'doc'
+                        ? 'A generated first-page image is not available yet for this DOC/DOCX.'
+                        : 'Preview unavailable for this file path.'}
+                  </Text>
                   {previewDisplayUri ? (
                     <TouchableOpacity
                       style={[styles.openFileBtn, { backgroundColor: t.textPrimary }]}
@@ -1155,6 +1268,21 @@ const styles = StyleSheet.create({
     borderRadius: Radii.section,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
+  },
+  customDescriptionCard: {
+    borderWidth: 1,
+    borderRadius: Radii.input,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.sm,
+    gap: Spacing.xxs,
+  },
+  customDescriptionLabel: {
+    ...Typography.subtitle,
+  },
+  customDescriptionValue: {
+    ...Typography.body,
+    minHeight: 42,
   },
   dropdownSection: {
     marginBottom: Spacing.sm,
