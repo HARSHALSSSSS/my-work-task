@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Search, LayoutGrid } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
+import { HeroBannerCarousel, HeroBannerSlide } from '../../components/ui/HeroBannerCarousel';
 import { Spacing, scale } from '../../constants/theme';
 import { HomeTabStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
@@ -149,7 +150,7 @@ export function ShopByCategoryScreen() {
   const [apiRecent, setApiRecent] = useState<ProductItem[]>([]);
   const [apiArrivals, setApiArrivals] = useState<ProductItem[]>([]);
   const [apiSearchPool, setApiSearchPool] = useState<ProductItem[]>([]);
-  const [bannerUri, setBannerUri] = useState<string | null>(null);
+  const [bannerUris, setBannerUris] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<ProductItem[]>([]);
   const [searching, setSearching] = useState(false);
@@ -182,10 +183,10 @@ export function ShopByCategoryScreen() {
             : [],
         );
 
-        const bannerFromHome = (home?.banners || []).find((b: any) => b?.image);
-        setBannerUri(
-          bannerFromHome?.image ? toAbsoluteAssetUrl(bannerFromHome.image) : null,
-        );
+        const bannerImages = (home?.banners || [])
+          .map((b: any) => toAbsoluteAssetUrl(b?.image))
+          .filter(Boolean);
+        setBannerUris(bannerImages);
 
         const listItemsRaw: any[] = extractProductItems(listRes);
         const listItems = sortProducts(dedupeProducts(listItemsRaw));
@@ -213,6 +214,35 @@ export function ShopByCategoryScreen() {
   const searchPool = React.useMemo(
     () => dedupeProducts([...apiSearchPool, ...displayRecent, ...displayArrivals]).filter((p) => Boolean(p.id)),
     [apiSearchPool, displayRecent, displayArrivals],
+  );
+
+  const heroBannerSlides = React.useMemo<HeroBannerSlide[]>(
+    () => {
+      const fallbackSlides: HeroBannerSlide[] = [
+        { id: 'shopping-fallback-banner-primary', image: IMG_BANNER },
+        {
+          id: 'shopping-fallback-banner-secondary',
+          image: IMG_BANNER,
+          overlay: (
+            <View style={styles.bannerOverlayAlt}>
+              <Text style={styles.bannerOverlayKicker}>EVERYDAY ESSENTIALS</Text>
+              <Text style={styles.bannerOverlayTitle}>Stationery picks for work, study, and gifting.</Text>
+            </View>
+          ),
+        },
+      ];
+
+      if (bannerUris.length === 0) return fallbackSlides;
+      if (bannerUris.length === 1) {
+        return [
+          { id: 'shopping-banner-0', image: { uri: bannerUris[0] } },
+          fallbackSlides[1],
+        ];
+      }
+
+      return bannerUris.map((uri, index) => ({ id: `shopping-banner-${index}`, image: { uri } }));
+    },
+    [bannerUris],
   );
 
   const onProductPress = useCallback(
@@ -351,9 +381,13 @@ export function ShopByCategoryScreen() {
           </>
         ) : (
           <>
-            <View style={styles.bannerWrap}>
-              <Image source={bannerUri ? { uri: bannerUri } : IMG_BANNER} style={styles.bannerImage} resizeMode="cover" />
-            </View>
+            <HeroBannerCarousel
+              slides={heroBannerSlides}
+              height={scale(172)}
+              gap={10}
+              style={styles.bannerWrap}
+              cardStyle={styles.bannerCard}
+            />
 
             <ScrollView
               horizontal
@@ -502,14 +536,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   bannerWrap: {
-    marginHorizontal: 12,
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 16,
+    marginHorizontal: 8,
+    marginBottom: 18,
   },
-  bannerImage: {
-    width: '100%',
-    height: scale(132),
+  bannerCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  bannerOverlayAlt: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.18)',
+  },
+  bannerOverlayKicker: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 1.4,
+    color: '#F8FAFC',
+    marginBottom: 4,
+  },
+  bannerOverlayTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#FFFFFF',
+    maxWidth: '72%',
   },
   catRow: {
     flexDirection: 'row',

@@ -79,8 +79,60 @@ function getItemSubtitle(item: CartItem): string {
 function isImageLikeFile(file?: string): boolean {
   const raw = String(file || '').toLowerCase();
   if (!raw) return false;
-  if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/uploads/')) return true;
   return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => raw.includes(ext));
+}
+
+function getUploadedFilePreviewUri(item: CartItem): string {
+  const uploaded = item.printConfig?.uploadedFile;
+  const previewCandidate = String(
+    uploaded?.previewImage
+    || uploaded?.thumbnailUrl
+    || uploaded?.previewUrl
+    || '',
+  ).trim();
+  if (previewCandidate) return toAbsoluteAssetUrl(previewCandidate);
+
+  const rawUrl = String(uploaded?.url || '').trim();
+  return isImageLikeFile(rawUrl) ? toAbsoluteAssetUrl(rawUrl) : '';
+}
+
+function getPrintingDocumentLabel(item: CartItem): string {
+  const fileName = String(
+    item.printConfig?.fileName
+    || item.printConfig?.uploadedFile?.name
+    || item.image
+    || '',
+  ).toLowerCase();
+  const mimeType = String(
+    item.printConfig?.fileMime
+    || item.printConfig?.uploadedFile?.mimeType
+    || '',
+  ).toLowerCase();
+
+  if (mimeType.includes('pdf') || fileName.includes('.pdf')) return 'PDF';
+  if (
+    mimeType.includes('msword')
+    || mimeType.includes('wordprocessingml')
+    || fileName.includes('.docx')
+    || fileName.includes('.doc')
+  ) {
+    return 'DOC';
+  }
+
+  return '';
+}
+
+function getCartThumbnailUri(item: CartItem): string {
+  if (item.type === 'printing') {
+    const uploadedPreview = getUploadedFilePreviewUri(item);
+    if (uploadedPreview) return uploadedPreview;
+
+    if (isImageLikeFile(item.image)) return toAbsoluteAssetUrl(item.image);
+    if (isImageLikeFile(item.printConfig?.fileUri)) return toAbsoluteAssetUrl(item.printConfig?.fileUri);
+    return '';
+  }
+
+  return item.image ? toAbsoluteAssetUrl(item.image) : '';
 }
 
 function cartCardShadow() {
@@ -711,12 +763,17 @@ export function CartScreen() {
 
             <View style={styles.itemRow}>
               <View style={styles.thumbWrap}>
-                {item.image && (getCartFlowType(item) !== 'printing' || isImageLikeFile(item.image) || isImageLikeFile(item.printConfig?.fileName)) ? (
-                  <Image source={{ uri: toAbsoluteAssetUrl(item.image) }} style={styles.thumb} resizeMode="cover" />
+                {getCartThumbnailUri(item) ? (
+                  <Image source={{ uri: getCartThumbnailUri(item) }} style={styles.thumb} resizeMode="cover" />
                 ) : (
                   <View style={[styles.thumbPlaceholder, { backgroundColor: t.chipBg }]}>
-                    {String(item.printConfig?.fileName || item.image || '').toLowerCase().includes('.pdf') ? (
-                      <FileText size={28} color={t.iconDefault} />
+                    {getPrintingDocumentLabel(item) ? (
+                      <>
+                        <FileText size={28} color={t.iconDefault} />
+                        <Text style={[styles.thumbFileLabel, { color: t.textSecondary }]}>
+                          {getPrintingDocumentLabel(item)}
+                        </Text>
+                      </>
                     ) : (
                       <ShoppingBag size={28} color={t.iconDefault} />
                     )}
@@ -1062,6 +1119,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightGray,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+  },
+  thumbFileLabel: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.6,
   },
   itemBody: {
     flex: 1,

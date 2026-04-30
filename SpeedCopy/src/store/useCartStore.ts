@@ -18,27 +18,99 @@ interface CartState {
   fetchCart: () => Promise<void>;
 }
 
-function mapBackendToLocal(b: cartApi.BackendCart): { items: CartItem[]; backendCartId: string | null } {
+function isImageLikeFile(file?: string): boolean {
+  const raw = String(file || '').toLowerCase();
+  if (!raw) return false;
+  if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('file:') || raw.startsWith('content:') || raw.startsWith('/uploads/')) {
+    return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => raw.includes(ext));
+  }
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => raw.includes(ext));
+}
+
+function resolveUploadedFilePreviewUri(item?: Partial<CartItem> | null): string {
+  const uploaded = item?.printConfig?.uploadedFile;
+  const previewCandidate = String(
+    uploaded?.previewImage
+    || uploaded?.thumbnailUrl
+    || uploaded?.previewUrl
+    || '',
+  ).trim();
+  if (previewCandidate) return previewCandidate;
+
+  const rawUrl = String(uploaded?.url || '').trim();
+  return isImageLikeFile(rawUrl) ? rawUrl : '';
+}
+
+function resolveCartItemThumbnail(item?: Partial<CartItem> | null): string {
+  if (!item) return '';
+
+  const uploadedPreview = resolveUploadedFilePreviewUri(item);
+  if (uploadedPreview) return uploadedPreview;
+
+  if (isImageLikeFile(item.image)) return String(item.image || '');
+  if (isImageLikeFile(item.printConfig?.fileUri)) return String(item.printConfig?.fileUri || '');
+  return String(item.image || '');
+}
+
+function findMatchingLocalItem(backendItem: cartApi.BackendCartItem, localItems: CartItem[]): CartItem | undefined {
+  const printConfigId = String(backendItem.printConfigId || '').trim();
+  if (printConfigId) {
+    const byPrintConfig = localItems.find((item) => String(item.printConfigId || '').trim() === printConfigId);
+    if (byPrintConfig) return byPrintConfig;
+  }
+
+  const designId = String(backendItem.designId || '').trim();
+  if (designId) {
+    const byDesign = localItems.find((item) => String(item.designId || '').trim() === designId);
+    if (byDesign) return byDesign;
+  }
+
+  const productId = String(backendItem.productId || '').trim();
+  const flowType = backendItem.flowType;
+  const productName = String(backendItem.productName || '').trim();
+  if (!productId) return undefined;
+
+  return localItems.find((item) => (
+    String(item.backendProductId || '').trim() === productId
+    && (item.flowType || inferFlowTypeFromItemId(item.id)) === flowType
+    && String(item.name || '').trim() === productName
+  ));
+}
+
+function mapBackendToLocal(
+  b: cartApi.BackendCart,
+  existingItems: CartItem[] = [],
+): { items: CartItem[]; backendCartId: string | null } {
   return {
     backendCartId: b._id || null,
-    items: b.items.map((bi) => ({
-      id: bi._id,
-      backendProductId: bi.productId,
-      designId: bi.designId,
-      printConfigId: bi.printConfigId,
-      businessPrintConfigId: bi.businessPrintConfigId,
-      type:
-        bi.flowType === 'printing'
-          ? 'printing' as const
-          : bi.flowType === 'gifting'
-            ? 'gifting' as const
-            : 'product' as const,
-      flowType: bi.flowType,
-      quantity: bi.quantity,
-      price: bi.unitPrice,
-      name: bi.productName,
-      image: getProductImageUrl(bi) || bi.thumbnail || '',
-    })),
+    items: b.items.map((bi) => {
+      const localMatch = findMatchingLocalItem(bi, existingItems);
+      const backendImage = getProductImageUrl(bi) || bi.thumbnail || '';
+      const mergedImage = resolveCartItemThumbnail({
+        ...localMatch,
+        image: backendImage || localMatch?.image,
+      });
+
+      return {
+        ...localMatch,
+        id: bi._id,
+        backendProductId: bi.productId || localMatch?.backendProductId,
+        designId: bi.designId || localMatch?.designId,
+        printConfigId: bi.printConfigId || localMatch?.printConfigId,
+        businessPrintConfigId: bi.businessPrintConfigId || localMatch?.businessPrintConfigId,
+        type:
+          bi.flowType === 'printing'
+            ? 'printing' as const
+            : bi.flowType === 'gifting'
+              ? 'gifting' as const
+              : 'product' as const,
+        flowType: bi.flowType,
+        quantity: bi.quantity,
+        price: bi.unitPrice,
+        name: bi.productName || localMatch?.name || '',
+        image: mergedImage || backendImage || '',
+      };
+    }),
   };
 }
 
@@ -114,6 +186,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       const productIdForBackend = isCatalogFlow
         ? safeBackendProductId
         : safeBackendProductId || item.id;
+      const thumbnailForBackend = resolveCartItemThumbnail(item);
       const backendCart = await cartApi.addToCart({
         productId: productIdForBackend,
         productName: item.name,
@@ -121,7 +194,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         quantity: item.quantity,
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
-        thumbnail: item.image,
+        thumbnail: thumbnailForBackend,
         printConfigId: item.printConfigId,
         businessPrintConfigId: item.businessPrintConfigId,
         designId: item.designId,
@@ -136,8 +209,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ syncing: true });
     try {
       const cart = await cartApi.getCart();
-      const mapped = mapBackendToLocal(cart);
-      set({ ...mapped, syncing: false });
+      set((state) => {
+        const mapped = mapBackendToLocal(cart, state.items);
+        return { ...mapped, syncing: false };
+      });
     } catch {
       set({ syncing: false });
     }

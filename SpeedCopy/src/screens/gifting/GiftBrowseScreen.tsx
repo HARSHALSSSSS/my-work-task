@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, ListRenderItem, ScrollView, StyleSheet, Text, TouchableOpacity, ActivityIndicator, View, Image } from 'react-native';
+import { FlatList, ListRenderItem, ScrollView, StyleSheet, Text, TouchableOpacity, ActivityIndicator, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
+import { Colors, Radii, Spacing, Typography, scale } from '../../constants/theme';
 import { SafeScreen } from '../../components/layout/SafeScreen';
+import { HeroBannerCarousel, HeroBannerSlide } from '../../components/ui/HeroBannerCarousel';
 import { ProductCard } from '../../components/ui/ProductCard';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { GiftStackParamList } from '../../navigation/types';
@@ -24,7 +25,7 @@ export function GiftBrowseScreen() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [chips, setChips] = useState<string[]>(['All']);
   const [loading, setLoading] = useState(true);
-  const [bannerUri, setBannerUri] = useState<string | null>(null);
+  const [bannerUris, setBannerUris] = useState<string[]>([]);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
@@ -58,13 +59,15 @@ export function GiftBrowseScreen() {
         setChips(['All']);
       }
       const bannerPool = home?.banners || [];
-      const primaryBanner = bannerPool.find((b: any) => b?.image);
-      setBannerUri(primaryBanner?.image ? toAbsoluteAssetUrl(primaryBanner.image) : null);
+      const bannerImages = bannerPool
+        .map((banner: any) => toAbsoluteAssetUrl(banner?.image))
+        .filter(Boolean);
+      setBannerUris(bannerImages);
       setLoading(false);
     }).catch(() => {
       setAllProducts([]);
       setChips(['All']);
-      setBannerUri(null);
+      setBannerUris([]);
       setLoading(false);
     });
   }, []));
@@ -73,6 +76,11 @@ export function GiftBrowseScreen() {
     if (chip === 'All') return allProducts;
     return allProducts.filter((p) => p.category === chip);
   }, [chip, allProducts]);
+
+  const heroBannerSlides = useMemo<HeroBannerSlide[]>(
+    () => bannerUris.map((uri, index) => ({ id: `gift-browse-banner-${index}`, image: { uri } })),
+    [bannerUris],
+  );
 
   const onProductPress = useCallback(
     (productId: string) => {
@@ -92,10 +100,14 @@ export function GiftBrowseScreen() {
     <SafeScreen>
       <ScreenHeader title="Gifting" onBack={() => navigation.goBack()} />
 
-      {bannerUri ? (
-        <View style={styles.bannerImageWrap}>
-          <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
-        </View>
+      {heroBannerSlides.length > 0 ? (
+        <HeroBannerCarousel
+          slides={heroBannerSlides}
+          height={scale(172)}
+          gap={10}
+          style={styles.bannerCarouselWrap}
+          cardStyle={styles.bannerCarouselCard}
+        />
       ) : (
         <LinearGradient colors={[Colors.purplePrimary, Colors.purpleBorder]} style={styles.banner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <Text style={styles.bannerText}>Personalized Gifts</Text>
@@ -169,8 +181,9 @@ const styles = StyleSheet.create({
   },
   banner: {
     marginHorizontal: Spacing.lg,
+    minHeight: scale(172),
     borderRadius: Radii.section,
-    paddingVertical: Spacing.xl,
+    justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
   },
@@ -178,15 +191,13 @@ const styles = StyleSheet.create({
     ...Typography.h3,
     color: Colors.surface,
   },
-  bannerImageWrap: {
+  bannerCarouselWrap: {
     marginHorizontal: Spacing.lg,
-    borderRadius: Radii.section,
-    overflow: 'hidden',
     marginBottom: Spacing.md,
   },
-  bannerImage: {
-    width: '100%',
-    height: 156,
+  bannerCarouselCard: {
+    borderRadius: Radii.section,
+    overflow: 'hidden',
   },
   list: { flex: 1 },
   columnWrap: {

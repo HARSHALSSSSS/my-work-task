@@ -29,7 +29,7 @@ import * as productsApi from '../../api/products';
 import { QuantityPicker } from '../../components/ui/QuantityPicker';
 import { Input } from '../../components/ui/Input';
 import { Colors, Radii, Spacing, Typography } from '../../constants/theme';
-import { getProductImageUrl, toAbsoluteAssetUrl } from '../../utils/product';
+import { toAbsoluteAssetUrl } from '../../utils/product';
 
 type Nav = NativeStackNavigationProp<PrintStackParamList, 'StandardPrinting'>;
 type Route = RouteProp<PrintStackParamList, 'StandardPrinting'>;
@@ -231,8 +231,21 @@ function resolveEmbeddedPreviewUri(uri?: string, kind: PreviewKind): string {
   return normalized;
 }
 
+function resolveUploadedFilePreviewUri(file?: productsApi.UploadedFile | null): string {
+  const previewCandidate = String(
+    file?.previewImage
+    || file?.thumbnailUrl
+    || file?.previewUrl
+    || '',
+  ).trim();
+  if (previewCandidate) return normalizePreviewUri(previewCandidate);
+
+  const rawUrl = String(file?.url || '').trim();
+  return isImageLikeFile(file?.name, rawUrl) ? normalizePreviewUri(rawUrl) : '';
+}
+
 function resolvePreviewImageUri(file?: productsApi.UploadedFile | null, localUri?: string, kind?: PreviewKind): string {
-  const backendImage = file ? getProductImageUrl(file) : '';
+  const backendImage = resolveUploadedFilePreviewUri(file);
   if (backendImage) return normalizePreviewUri(backendImage);
   if (kind === 'image') return normalizePreviewUri(localUri || file?.url);
   return '';
@@ -244,8 +257,7 @@ function getPreviewStatusText(kind: PreviewKind, hasPreviewImage: boolean): stri
     if (kind === 'doc') return 'Showing generated document preview.';
     return 'Showing uploaded image preview.';
   }
-  if (kind === 'pdf') return 'PDF preview depends on viewer support.';
-  if (kind === 'doc') return 'DOC preview depends on online viewer support.';
+  if (kind === 'pdf' || kind === 'doc') return '';
   return 'File ready for preview.';
 }
 
@@ -675,7 +687,7 @@ export const StandardPrintingScreen: React.FC = () => {
         name: `${serviceTitle} - ${pageSize} (${colorMode === 'bw' ? 'B&W' : colorMode === 'color' ? 'Color' : 'Custom'})`,
         printConfig,
         printConfigId: saved?._id || saved?.configId,
-        image: getProductImageUrl(finalUploaded) || finalUploaded.url,
+        image: resolveUploadedFilePreviewUri(finalUploaded) || finalUploaded.url,
       };
 
       addItem(item);
@@ -960,9 +972,11 @@ export const StandardPrintingScreen: React.FC = () => {
               ) : (
                 <View style={styles.previewFallback}>
                   <FileText size={22} color={t.iconDefault} />
-                  <Text style={[styles.previewFallbackText, { color: t.textSecondary }]}>
-                    {getPreviewStatusText(previewKind, hasImagePreview)}
-                  </Text>
+                  {getPreviewStatusText(previewKind, hasImagePreview) ? (
+                    <Text style={[styles.previewFallbackText, { color: t.textSecondary }]}>
+                      {getPreviewStatusText(previewKind, hasImagePreview)}
+                    </Text>
+                  ) : null}
                   <Text style={[styles.previewHint, { color: t.textMuted }]}>Tap to open</Text>
                 </View>
               )}

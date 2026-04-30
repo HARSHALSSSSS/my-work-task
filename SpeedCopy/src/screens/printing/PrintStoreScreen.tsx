@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Search, LayoutGrid } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
+import { HeroBannerCarousel, HeroBannerSlide } from '../../components/ui/HeroBannerCarousel';
 import { PrintStackParamList } from '../../navigation/types';
 import { useCategoryStore } from '../../store/useCategoryStore';
 import { useThemeStore } from '../../store/useThemeStore';
@@ -274,7 +275,34 @@ export const PrintStoreScreen: React.FC = () => {
   }, [apiRecent, searchQuery]);
 
   const hasAnyProducts = displayRecent.length > 0 || displayProducts.length > 0;
-  const heroBannerUri = bannerUris[0];
+  const heroBannerSlides = useMemo<HeroBannerSlide[]>(
+    () => {
+      const fallbackSlides: HeroBannerSlide[] = [
+        { id: 'print-fallback-banner-primary', image: IMG_PRINT_BANNER_FALLBACK },
+        {
+          id: 'print-fallback-banner-secondary',
+          image: IMG_PRINT_BANNER_FALLBACK,
+          overlay: (
+            <View style={styles.bannerOverlayAlt}>
+              <Text style={styles.bannerOverlayKicker}>BUSINESS PRINTING</Text>
+              <Text style={styles.bannerOverlayTitle}>Cards, flyers, and custom print runs in one place.</Text>
+            </View>
+          ),
+        },
+      ];
+
+      if (bannerUris.length === 0) return fallbackSlides;
+      if (bannerUris.length === 1) {
+        return [
+          { id: 'print-banner-0', image: { uri: bannerUris[0] } },
+          fallbackSlides[1],
+        ];
+      }
+
+      return bannerUris.map((uri, index) => ({ id: `print-banner-${index}`, image: { uri } }));
+    },
+    [bannerUris],
+  );
 
   return (
     <SafeScreen>
@@ -303,13 +331,13 @@ export const PrintStoreScreen: React.FC = () => {
           />
         </View>
 
-        <View style={[styles.bannerWrap, { backgroundColor: t.card, borderColor: t.border }]}>
-          <Image
-            source={{ uri: heroBannerUri || Image.resolveAssetSource(IMG_PRINT_BANNER_FALLBACK).uri }}
-            style={styles.bannerImage}
-            resizeMode="cover"
-          />
-        </View>
+        <HeroBannerCarousel
+          slides={heroBannerSlides}
+          height={scale(172)}
+          gap={10}
+          style={styles.bannerWrap}
+          cardStyle={[styles.bannerCard, { backgroundColor: t.card, borderColor: t.border }]}
+        />
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -482,15 +510,35 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   bannerWrap: {
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 16,
-    marginHorizontal: -4,
+    marginBottom: 18,
+    marginHorizontal: -8,
   },
-  bannerImage: {
-    width: '100%',
-    height: scale(132),
+  bannerCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  bannerOverlayAlt: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.22)',
+  },
+  bannerOverlayKicker: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 1.4,
+    color: '#F8FAFC',
+    marginBottom: 4,
+  },
+  bannerOverlayTitle: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#FFFFFF',
+    maxWidth: '70%',
   },
   categoryRow: {
     gap: Spacing.sm,

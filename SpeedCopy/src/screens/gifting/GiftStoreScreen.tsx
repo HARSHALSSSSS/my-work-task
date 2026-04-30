@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Search, ChevronLeft, Grid2x2, Clock3, Gift } from 'lucide-react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
+import { HeroBannerCarousel, HeroBannerSlide } from '../../components/ui/HeroBannerCarousel';
 import { Spacing, scale } from '../../constants/theme';
 import { GiftStackParamList } from '../../navigation/types';
 import { useThemeStore } from '../../store/useThemeStore';
@@ -253,6 +254,33 @@ export function GiftStoreScreen() {
     () => dedupeProducts([...displayAllProducts, ...displayBestSellers, ...displayNewArrivals, ...displayRecent]).filter((p) => Boolean(p.id)),
     [displayAllProducts, displayBestSellers, displayNewArrivals, displayRecent],
   );
+
+  const heroBannerSlides = React.useMemo<HeroBannerSlide[]>(() => {
+    if (bannerUris.length > 0) {
+      return bannerUris.map((uri, index) => ({
+        id: `gift-banner-${index}`,
+        image: { uri },
+      }));
+    }
+
+    return [
+      {
+        id: 'gift-fallback-primary',
+        image: IMG_GIFT_BANNER_PRIMARY,
+        overlay: (
+          <View style={[styles.primaryBannerOverlay, { backgroundColor: mode === 'dark' ? 'rgba(8,10,16,0.32)' : 'rgba(70, 38, 45, 0.18)' }]}>
+            <Text style={styles.primaryBannerKicker}>FEATURED</Text>
+            <Text style={styles.primaryBannerTitle}>Bloom & Gift</Text>
+            <Text style={styles.primaryBannerSub}>Premium bouquets and keepsakes for every celebration.</Text>
+          </View>
+        ),
+      },
+      {
+        id: 'gift-fallback-secondary',
+        image: IMG_GIFT_BANNER_SECONDARY,
+      },
+    ];
+  }, [bannerUris, mode]);
 
   const mapSearchProduct = useCallback((p: any): ProductItem => {
     const imageCandidates = getProductImageCandidates(p);
@@ -504,14 +532,13 @@ export function GiftStoreScreen() {
                 })}
               </ScrollView>
 
-              <View style={[styles.primaryBannerCard, { backgroundColor: t.card, borderColor: t.border }]}>
-                <Image source={bannerUris[0] ? { uri: bannerUris[0] } : IMG_GIFT_BANNER_PRIMARY} style={styles.primaryBannerImage} resizeMode="cover" />
-                <View style={[styles.primaryBannerOverlay, { backgroundColor: mode === 'dark' ? 'rgba(8,10,16,0.32)' : 'rgba(70, 38, 45, 0.18)' }]}>
-                  <Text style={styles.primaryBannerKicker}>FEATURED</Text>
-                  <Text style={styles.primaryBannerTitle}>Bloom & Gift</Text>
-                  <Text style={styles.primaryBannerSub}>Premium bouquets and keepsakes for every celebration.</Text>
-                </View>
-              </View>
+              <HeroBannerCarousel
+                slides={heroBannerSlides}
+                height={scale(182)}
+                gap={10}
+                style={styles.heroBannerWrap}
+                cardStyle={[styles.heroBannerCard, { backgroundColor: t.card, borderColor: t.border }]}
+              />
             </View>
 
             {displayBestSellers.length > 0 ? (
@@ -539,10 +566,6 @@ export function GiftStoreScreen() {
                   </View>
                 </View>
               ))}
-            </View>
-
-            <View style={[styles.secondaryBannerCard, { backgroundColor: t.card, borderColor: t.border }]}>
-              <Image source={bannerUris[1] ? { uri: bannerUris[1] } : IMG_GIFT_BANNER_SECONDARY} style={styles.secondaryBannerImage} resizeMode="cover" />
             </View>
 
             {displayNewArrivals.length > 0 ? (
@@ -681,16 +704,14 @@ const styles = StyleSheet.create({
     lineHeight: 13,
     textAlign: 'center',
   },
-  primaryBannerCard: {
-    marginHorizontal: 14,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
+  heroBannerWrap: {
+    marginHorizontal: 10,
     marginBottom: 10,
   },
-  primaryBannerImage: {
-    width: '100%',
-    height: scale(112),
+  heroBannerCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
   },
   primaryBannerOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -837,17 +858,6 @@ const styles = StyleSheet.create({
   deliverySub: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 9.5,
-  },
-  secondaryBannerCard: {
-    marginHorizontal: 14,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  secondaryBannerImage: {
-    width: '100%',
-    height: scale(88),
   },
   productImageFallback: {
     alignItems: 'center',
