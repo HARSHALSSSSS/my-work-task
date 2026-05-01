@@ -1186,11 +1186,21 @@ export function CustomizeScreen() {
     }
   }, []);
 
-  const handleResetTransforms = useCallback(() => {
+  const handleRemovePhoto = useCallback(() => {
+    setUserImageUri(null);
     skiaCanvasRef.current?.resetTransforms();
     setExportedUri(null);
     setCanvasResetVersion((prev) => prev + 1);
   }, []);
+
+  const handleSelectTextColor = useCallback((color: string) => {
+    setTextColor(color);
+    if (!selectedTextId) return;
+    setTextLayers((prev) =>
+      prev.map((item) => (item.id === selectedTextId ? { ...item, color } : item)),
+    );
+    setExportedUri(null);
+  }, [selectedTextId]);
 
   // IMPORTANT: read live values from refs so this callback, and therefore the
   // PanResponder that uses it, stays referentially stable across renders.
@@ -2027,7 +2037,7 @@ export function CustomizeScreen() {
                         styles.canvasActionBtn,
                         { backgroundColor: 'transparent', borderColor: t.border },
                       ]}
-                      onPress={handleResetTransforms}
+                      onPress={handleRemovePhoto}
                       activeOpacity={0.85}
                     >
                       <RotateCcw size={16} color={t.textPrimary} />
@@ -2124,14 +2134,14 @@ export function CustomizeScreen() {
                   placeholderTextColor={t.placeholder}
                   style={[
                     styles.textInput,
-                    { color: t.textPrimary, borderColor: t.border, backgroundColor: t.background },
+                    { color: textColor, borderColor: t.border, backgroundColor: t.background },
                   ]}
                 />
                 <View style={styles.textColorRow}>
                   {TEXT_COLORS.map((color) => (
                     <TouchableOpacity
                       key={color}
-                      onPress={() => setTextColor(color)}
+                      onPress={() => handleSelectTextColor(color)}
                       style={[
                         styles.textColorDot,
                         { backgroundColor: color },
