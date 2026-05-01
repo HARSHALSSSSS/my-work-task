@@ -36,6 +36,37 @@ type ImageOverride = {
   imageKey: string;
 };
 
+const FALLBACK_IMAGE_BY_CATEGORY: Record<Category, string> = {
+  gifting: Image.resolveAssetSource(require('../../../assets/images/gift-prod-mug.png'))?.uri || '',
+  printing: Image.resolveAssetSource(require('../../../assets/images/print-business-cards.png'))?.uri || '',
+  stationery: Image.resolveAssetSource(require('../../../assets/images/shop-notebooks.png'))?.uri || '',
+  shopping: Image.resolveAssetSource(require('../../../assets/images/shop-notebooks.png'))?.uri || '',
+};
+
+function getOrderImageSources(order: any, override?: ImageOverride) {
+  const items: any[] = Array.isArray(order?.items) ? order.items : [];
+  const firstItem: any = items[0] || {};
+
+  return [
+    override,
+    firstItem,
+    firstItem?.product,
+    firstItem?.variantSnapshot,
+    firstItem?.variant_snapshot,
+    firstItem?.productSnapshot,
+    firstItem?.product_snapshot,
+    firstItem?.snapshot,
+    ...items,
+    ...items.map((item) => item?.product),
+    ...items.map((item) => item?.variantSnapshot),
+    ...items.map((item) => item?.variant_snapshot),
+    ...items.map((item) => item?.productSnapshot),
+    ...items.map((item) => item?.product_snapshot),
+    ...items.map((item) => item?.snapshot),
+    order,
+  ];
+}
+
 function OrderImage({
   image,
   imageCandidates,
@@ -110,19 +141,9 @@ export const MyOrdersScreen: React.FC = () => {
     let cancelled = false;
 
     const missingImageOrders = storeOrders.filter((order) => {
-      const firstItem: any = order.items[0];
-      if (!firstItem) return false;
+      if (!order?.items?.length) return false;
       const override = imageOverrides[order.id];
-      const resolved = resolveProductImageSource(
-        override,
-        firstItem,
-        firstItem?.product,
-        firstItem?.variantSnapshot,
-        firstItem?.variant_snapshot,
-        firstItem?.productSnapshot,
-        firstItem?.product_snapshot,
-        firstItem?.snapshot,
-      );
+      const resolved = resolveProductImageSource(...getOrderImageSources(order, override));
       return !resolved.imageUri;
     });
 
@@ -135,24 +156,22 @@ export const MyOrdersScreen: React.FC = () => {
 
         try {
           const backendOrder = await ordersApi.getOrder(order.id).catch(() => null);
-          const backendItem: any = backendOrder?.items?.[0] || null;
+          const backendItems: any[] = Array.isArray(backendOrder?.items) ? backendOrder.items : [];
+          const backendItem: any = backendItems[0] || null;
 
           const fromOrder = resolveProductImageSource(
-            backendItem,
+            ...getOrderImageSources(backendOrder || order),
             firstItem,
-            backendItem?.variantSnapshot,
-            backendItem?.variant_snapshot,
-            backendItem?.productSnapshot,
-            backendItem?.product_snapshot,
-            backendItem?.snapshot,
-            backendOrder,
+            backendItem,
           );
           if (fromOrder.imageUri) {
             return { orderId: order.id, resolved: fromOrder };
           }
 
-          const flowType = String(backendItem?.flowType || firstItem?.flowType || '').toLowerCase();
-          const productId = String(backendItem?.productId || fallbackProductId).trim();
+          const backendItemWithProduct = backendItems.find((item) => item?.productId) || backendItem;
+          const flowTypeRaw = String(backendItemWithProduct?.flowType || firstItem?.flowType || '').toLowerCase();
+          const flowType = flowTypeRaw === 'stationery' ? 'shopping' : flowTypeRaw;
+          const productId = String(backendItemWithProduct?.productId || fallbackProductId).trim();
           if (!productId) return null;
 
           let productPayload: any = null;
@@ -168,7 +187,12 @@ export const MyOrdersScreen: React.FC = () => {
             productPayload = await productsApi.getProductById(productId).catch(() => null);
           }
 
-          const resolved = resolveProductImageSource(productPayload, backendItem, firstItem);
+          const resolved = resolveProductImageSource(
+            productPayload,
+            ...getOrderImageSources(backendOrder || order),
+            backendItemWithProduct,
+            firstItem,
+          );
           if (!resolved.imageUri) return null;
           return { orderId: order.id, resolved };
         } catch {
@@ -198,17 +222,23 @@ export const MyOrdersScreen: React.FC = () => {
   const displayOrders: DisplayOrder[] = React.useMemo(() => storeOrders.map((o) => {
     const firstItem: any = o.items[0] || {};
     const override = imageOverrides[o.id];
-    const resolvedImage = resolveProductImageSource(
-      override,
-      firstItem,
-      firstItem?.product,
-      firstItem?.variantSnapshot,
-      firstItem?.variant_snapshot,
-      firstItem?.productSnapshot,
-      firstItem?.product_snapshot,
-      firstItem?.snapshot,
-      o,
-    );
+    const rawCategory = String(
+      firstItem?.flowType
+      || (firstItem?.type === 'printing' ? 'printing' : firstItem?.type === 'gifting' ? 'gifting' : 'shopping'),
+    ).toLowerCase();
+    const category: Category = rawCategory === 'printing'
+      ? 'printing'
+      : rawCategory === 'gifting'
+        ? 'gifting'
+        : rawCategory === 'stationery'
+          ? 'stationery'
+          : 'shopping';
+    const fallbackImageUri = FALLBACK_IMAGE_BY_CATEGORY[category];
+    const resolvedImage = resolveProductImageSource(...getOrderImageSources(o, override));
+    const imageCandidates = Array.from(new Set([
+      ...resolvedImage.imageCandidates,
+      fallbackImageUri,
+    ].filter(Boolean)));
 
     return {
       id: o.id,
@@ -217,14 +247,11 @@ export const MyOrdersScreen: React.FC = () => {
       details: o.items.map((i) => i.name).join(', '),
       amount: o.total,
       status: o.status === 'delivered' ? 'Delivered' as Status : o.status === 'cancelled' ? 'Cancelled' as Status : 'In Transit' as Status,
-      category: (
-        firstItem?.flowType
-        || (firstItem?.type === 'printing' ? 'printing' : firstItem?.type === 'gifting' ? 'gifting' : 'shopping')
-      ) as Category,
+      category,
       initials: (firstItem?.name || 'OR').slice(0, 2).toUpperCase(),
-      image: resolvedImage.imageUri || undefined,
-      imageCandidates: resolvedImage.imageCandidates,
-      imageKey: resolvedImage.imageKey,
+      image: imageCandidates[0] || undefined,
+      imageCandidates,
+      imageKey: imageCandidates.join('|'),
     };
   }), [imageOverrides, storeOrders]);
 
